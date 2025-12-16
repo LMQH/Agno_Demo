@@ -1,0 +1,61 @@
+[project]
+name = "agno-rag-system"
+version = "0.1.0"
+description = "RAG system based on Agno framework"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "agno>=0.1.0",
+    "pymilvus>=2.3.0",
+    "pymysql>=1.1.0",
+    "sqlalchemy>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "markdown>=3.5.0",
+    "openai>=1.3.0",
+    "httpx>=0.25.0",
+    "python-multipart>=0.0.6",
+    "nest-asyncio>=1.5.8",
+    "tomli>=2.0.0; python_version < '3.11'",
+    # 修复依赖冲突
+    "soupsieve>1.2",
+    "jsonschema>=4.19.0",
+    "onnxruntime>=1.14.1",
+    "orjson>=3.9.12",
+    "overrides>=7.3.1",
+    "tenacity>=8.2.3",
+    "tokenizers>=0.13.2",
+    "webencodings",
+    "urllib3>=1.24.2,<2.4.0",
+    "websocket-client>=0.32.0,!=0.40.0,!=0.41.*,!=0.42.*",
+    "importlib-metadata>=6.0,<8.8.0",
+    "charset-normalizer>=2,<4",
+    "regex>=2022.1.18",
+    "mypy-extensions>=0.3.0",
+    "lxml",
+    "nltk",
+    "psutil",
+    "wrapt",
+    "cryptography>=3.1",
+    "requests-toolbelt>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "black>=23.11.0",
+    "ruff>=0.1.6",
+]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["agno_project"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+

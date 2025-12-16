@@ -1,0 +1,359 @@
+{
+	"info": {
+		"_postman_id": "agno-rag-system-collection",
+		"name": "Agno RAG System API",
+		"description": "基于 Agno 框架的 RAG 系统 API 接口集合\n\n## 使用说明\n\n1. 导入此集合到 Postman\n2. 设置环境变量 `base_url` 为你的服务器地址（默认：http://127.0.0.1:8000）\n3. 开始测试接口\n\n## 接口分组\n\n- **健康检查**：系统健康状态检查\n- **知识库管理**：文档的上传、查询、删除等操作\n- **RAG 查询**：智能问答接口\n- **系统信息**：系统统计和配置信息\n- **会话管理**：会话历史查询",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "健康检查",
+			"item": [
+				{
+					"name": "根路径健康检查",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "根端点健康检查，返回系统状态、环境和版本信息"
+					},
+					"response": []
+				},
+				{
+					"name": "健康检查端点",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "健康检查端点，返回系统状态、环境和版本信息"
+					},
+					"response": []
+				}
+			],
+			"description": "系统健康状态检查接口"
+		},
+		{
+			"name": "知识库管理",
+			"item": [
+				{
+					"name": "上传文档",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"description": "Markdown 格式文档文件"
+								},
+								{
+									"key": "chunk_method",
+									"value": "markdown",
+									"type": "text",
+									"description": "文档切分方法：recursive、markdown、semantic（默认：markdown）"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"upload"
+							]
+						},
+						"description": "上传 Markdown 文档到知识库，系统会自动切分并生成向量嵌入"
+					},
+					"response": []
+				},
+				{
+					"name": "添加文档（文件路径）",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"file_path\": \"/path/to/document.md\",\n    \"chunk_method\": \"markdown\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/add",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"add"
+							]
+						},
+						"description": "通过文件路径添加文档到知识库（适用于服务器本地文件）"
+					},
+					"response": []
+				},
+				{
+					"name": "列出所有文档",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents"
+							]
+						},
+						"description": "获取知识库中所有文档的列表"
+					},
+					"response": []
+				},
+				{
+					"name": "获取文档详情",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/{{document_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"{{document_id}}"
+							]
+						},
+						"description": "根据文档 ID 获取文档的详细信息"
+					},
+					"response": []
+				},
+				{
+					"name": "删除文档",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/{{document_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"{{document_id}}"
+							]
+						},
+						"description": "从知识库中删除指定文档及其所有切片"
+					},
+					"response": []
+				}
+			],
+			"description": "知识库文档管理接口，包括上传、查询、删除等操作"
+		},
+		{
+			"name": "RAG 查询",
+			"item": [
+				{
+					"name": "查询问答",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"文档中提到了什么内容？\",\n    \"top_k\": 5,\n    \"similarity_threshold\": 0.7,\n    \"session_id\": \"optional-session-id\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/query",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"query"
+							]
+						},
+						"description": "向 RAG 系统提问，系统会从知识库中检索相关信息并生成答案\n\n**参数说明：**\n- `question`: 用户问题（必填）\n- `top_k`: 检索的文档片段数量（可选，默认使用配置值）\n- `similarity_threshold`: 相似度阈值（可选，默认使用配置值）\n- `session_id`: 会话 ID（可选，用于会话持久化）"
+					},
+					"response": []
+				},
+				{
+					"name": "查询问答（带会话）",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"继续上面的问题\",\n    \"top_k\": 5,\n    \"similarity_threshold\": 0.7,\n    \"session_id\": \"my-session-123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/query",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"query"
+							]
+						},
+						"description": "带会话 ID 的查询，可以保持对话上下文"
+					},
+					"response": []
+				}
+			],
+			"description": "RAG 智能问答接口"
+		},
+		{
+			"name": "系统信息",
+			"item": [
+				{
+					"name": "获取切分方法列表",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/chunkers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"chunkers"
+							]
+						},
+						"description": "获取系统支持的所有文档切分方法"
+					},
+					"response": []
+				},
+				{
+					"name": "获取系统统计",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"stats"
+							]
+						},
+						"description": "获取系统统计信息，包括向量数据库统计、文档数量、环境信息等"
+					},
+					"response": []
+				}
+			],
+			"description": "系统信息和配置查询接口"
+		},
+		{
+			"name": "会话管理",
+			"item": [
+				{
+					"name": "获取会话历史",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/sessions/{{session_id}}/history",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sessions",
+								"{{session_id}}",
+								"history"
+							]
+						},
+						"description": "获取指定会话的历史记录，需要先启用 agent_db.enabled 配置"
+					},
+					"response": []
+				}
+			],
+			"description": "会话历史管理接口"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "document_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "session_id",
+			"value": "my-session-123",
+			"type": "string"
+		}
+	]
+}
+

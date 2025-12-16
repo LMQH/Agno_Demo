@@ -1,0 +1,49 @@
+[app]
+name = "agno-rag-system"
+environment = "dev"
+debug = true
+host = "127.0.0.1"
+port = 8000
+
+[database.mysql]
+host = "localhost"
+port = 3306
+user = "root"
+password = "LMQH123456"
+database = "agno_demo"
+charset = "utf8mb4"
+pool_size = 5
+
+[database.milvus]
+host = "121.37.229.249"
+port = 19530
+database = "rag"
+collection_name = "ceshi20251216_agno_rag_demo"
+dimension = 1024
+index_type = "IVF_FLAT"
+metric_type = "L2"
+
+[model.embedding]
+provider = "openai"
+model_name = "text-embedding-v4"
+api_key = "sk-67538ac36a854414b412e24c9b6d2ea4"
+api_base = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+dimension = 1024
+
+[model.llm]
+provider = "custom"
+model_name = "deepseek-v3.2-exp"
+api_base = "https://api.modelarts-maas.com/v1/chat/completions"
+api_key = "RHit7qnYZpdwXePYiPr6F0vVfT8zAWwNN4IMrkM2M9sZE00vo76krCCI-6FwhlusY6i1lju_gFm7ObqUxb-ENw"
+temperature = 0.7
+max_tokens = 5000
+
+[rag]
+chunk_size = 500
+chunk_overlap = 50
+top_k = 5
+similarity_threshold = 0.7
+
+[agent_db]
+enabled = true
+num_history_runs = 5
