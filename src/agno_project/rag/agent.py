@@ -70,10 +70,10 @@ class RAGAgent:
             system_message = "你是一个有用的问答助手，可以根据知识库中的信息回答问题。当需要信息时，使用 rag_retrieval 工具从知识库中检索相关内容。"
             description = "基于知识库的问答助手，可以从知识库中检索信息并回答问题。"
         
+        # 构建 Agent 配置参数
         agent_kwargs = {
             "name": "RAG Agent",
-            "description": description,
-            "model": custom_model,  # 使用自定义模型类
+            "model": custom_model,
             "tools": [self.rag_tool],
             "system_message": system_message,
         }
@@ -81,11 +81,12 @@ class RAGAgent:
         # 如果提供了数据库，添加会话持久性、历史记录和记忆功能
         if db:
             agent_kwargs["db"] = db
+            agent_kwargs["session_id"] = self.session_id
             agent_kwargs["add_history_to_context"] = True
-            agent_kwargs["num_history_runs"] = self.config.agent_db.num_history_runs
-            # 启用用户记忆功能（自动记忆管理）
+            agent_kwargs["num_history_runs"] = 2  # 简化配置，使用固定值
             agent_kwargs["enable_user_memories"] = True
-            logger.info(f"已启用会话持久性、历史记录和记忆功能（历史记录数量: {self.config.agent_db.num_history_runs}）")
+            agent_kwargs["add_memories_to_context"] = True
+            logger.info("已启用会话持久性、历史记录和记忆功能（历史记录数量: 2）")
         else:
             logger.warning("未提供数据库连接，记忆功能将不可用")
         
@@ -145,11 +146,11 @@ class RAGAgent:
         if current_user_id:
             logger.info(f"使用用户 ID: {current_user_id}")
         
-        # 调用 Agno Agent 的 run 方法
+        # 调用 Agno Agent 的 arun 方法（异步版本）
         # Agent 会自动使用 rag_retrieval 工具进行检索
         # 注意：不再预先检索，避免重复检索和 sources 不一致的问题
         try:
-            response = await self.agent.run(
+            response = await self.agent.arun(
                 question,
                 session_id=current_session_id,
                 user_id=current_user_id  # 传递 user_id 以启用记忆功能

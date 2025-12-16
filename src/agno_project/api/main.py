@@ -6,7 +6,9 @@ from typing import Optional, List
 import os
 import tempfile
 import logging
+import asyncio
 from pathlib import Path
+from agno.agent import RunOutput
 
 from ..config import get_config
 from ..knowledge_base.builder import KnowledgeBaseBuilder
@@ -47,14 +49,20 @@ async def startup_event():
         
         # 触发一次简单的 Agent 调用来初始化数据库表
         # 这会让 Agno 自动创建必要的表（agno_memories, agno_runs 等）
-        result = await rag_agent.query(
-            question="初始化",
-            session_id="session_start",
-            user_id="lmqh"
+        # 使用 agent.print_response() 方法，必须提供 user_id 才能启用记忆功能
+        # 使用包含用户信息的对话来触发记忆写入，从而创建表
+
+        # result = await rag_agent.query(
+        #     question="你好，我是用户 lmqh，请记住我的名字。请用一句话简短回复（不超过30字）。",
+        #     session_id="session_start",
+        #     user_id="lmqh"  # 必须提供 user_id 才能启用记忆功能
+        rag_agent.agent.print_response(
+            "你好，我是用户 lmqh，请记住我的名字。请用一句话简短回复（不超过30字）。",
+            user_id="lmqh",  # 必须提供 user_id 才能启用记忆功能
+            session_id="session_start"
         )
         
         logger.info("Agno 数据库表初始化成功")
-        logger.info(f"初始化响应: {result.get('answer', 'N/A')[:100]}...")
         logger.info("=" * 60)
     except Exception as e:
         # 初始化失败不影响应用启动，只记录警告
@@ -135,14 +143,43 @@ async def health():
 async def query(request: QueryRequest):
     """查询 RAG 系统。"""
     try:
-        result = await rag_agent.query(
-            question=request.question,
-            top_k=request.top_k,
-            similarity_threshold=request.similarity_threshold,
-            session_id=request.session_id,
-            user_id=request.user_id
+        # 使用 agent.run() 方法，必须提供 user_id 才能启用记忆功能
+        # 如果没有提供 user_id，使用 session_id 或默认值
+        user_id = request.user_id or request.session_id or "default_user"
+        session_id = request.session_id
+        
+        # 调用 agent.run() 方法（同步版本，在异步环境中使用 asyncio.to_thread）
+        # 参考官方示例：response: RunOutput = agent.run("你的问题")
+        # 必须传递 user_id 和 session_id 才能启用记忆功能
+        response: RunOutput = await asyncio.to_thread(
+            rag_agent.agent.run,
+            request.question,
+            user_id=user_id,  # 必须提供 user_id 才能启用记忆功能
+            session_id=session_id
         )
-        return result
+        
+        # 按照官方示例，直接使用 response.content 获取答案
+        answer = response.content
+        
+        # 从工具中获取最后一次检索的结果来构建 sources
+        sources = []
+        if hasattr(rag_agent.rag_tool, 'last_results') and rag_agent.rag_tool.last_results:
+            retrieval_results = rag_agent.rag_tool.last_results
+            for result in retrieval_results:
+                sources.append({
+                    "file_id": result.get("file_id"),
+                    "file_name": result.get("file_name", ""),
+                    "content": result.get("content", "")[:200] + "..." if len(result.get("content", "")) > 200 else result.get("content", ""),
+                    "score": round(result.get("score", 0.0), 4)
+                })
+        
+        return {
+            "question": request.question,
+            "answer": answer,
+            "sources": sources,
+            "num_sources": len(sources),
+            "session_id": session_id
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
 
