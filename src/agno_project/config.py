@@ -79,7 +79,7 @@ class RAGConfig(BaseSettings):
 class AgentDbConfig(BaseSettings):
     """Agno Agent 数据库配置（用于会话持久性）。
     
-    现在使用 PostgresDb 连接 MySQL，不再需要 db_type、db_file 和 db_id。
+    现在使用 MySQLDb 连接 MySQL，不再需要 db_type、db_file 和 db_id。
     这些字段保留仅用于向后兼容，实际不再使用。
     """
     enabled: bool = True
@@ -87,6 +87,9 @@ class AgentDbConfig(BaseSettings):
     db_file: Optional[str] = None  # 已废弃，不再使用
     db_id: Optional[str] = None  # 已废弃，不再使用
     num_history_runs: int = 5  # 历史记录运行次数，用于控制添加到上下文的历史消息数量
+    db_schema: Optional[str] = None  # 数据库 schema 名称，用于生成表名（如 "agno_demo"），默认为 "ai"
+    session_table: Optional[str] = None  # 自定义会话表名，如果为 None 则使用 {db_schema}_sessions
+    memory_table: Optional[str] = None  # 自定义记忆表名，如果为 None 则使用 {db_schema}_memories
 
 
 def get_local_ip() -> str:

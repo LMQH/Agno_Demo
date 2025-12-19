@@ -161,17 +161,12 @@ async def query(request: QueryRequest):
         # 按照官方示例，直接使用 response.content 获取答案
         answer = response.content
         
-        # 从工具中获取最后一次检索的结果来构建 sources
-        sources = []
-        if hasattr(rag_agent.rag_tool, 'last_results') and rag_agent.rag_tool.last_results:
-            retrieval_results = rag_agent.rag_tool.last_results
-            for result in retrieval_results:
-                sources.append({
-                    "file_id": result.get("file_id"),
-                    "file_name": result.get("file_name", ""),
-                    "content": result.get("content", "")[:200] + "..." if len(result.get("content", "")) > 200 else result.get("content", ""),
-                    "score": round(result.get("score", 0.0), 4)
-                })
+        # 使用统一的 sources 提取方法
+        sources = rag_agent._extract_sources_from_response(response)
+        
+        # 如果仍然没有 sources，记录警告
+        if not sources:
+            logger.warning(f"查询 '{request.question}' 未返回 sources（Agent 可能未调用检索工具）")
         
         return {
             "question": request.question,
@@ -353,6 +348,35 @@ async def get_session_history(session_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取会话历史失败: {str(e)}")
+
+
+@app.get("/api/v1/memory/status")
+async def get_memory_status():
+    """获取记忆功能状态。"""
+    try:
+        status = rag_agent.verify_memory_enabled()
+        return status
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取记忆状态失败: {str(e)}")
+
+
+@app.post("/api/v1/memory/{user_id}/prune")
+async def prune_user_memory(user_id: str, keep_count: Optional[int] = None):
+    """清理指定用户的记忆（保留最近的 N 条）。
+    
+    Args:
+        user_id: 用户 ID
+        keep_count: 保留的记忆数量，如果为 None 则使用默认值（10）
+    """
+    try:
+        result = await rag_agent.prune_memories(user_id=user_id, keep_count=keep_count)
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("message"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"清理记忆失败: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,53 @@
+[app]
+name = "agno-rag-system"
+environment = "dev"  # dev, show, prod
+debug = true
+host = "127.0.0.1"  # 开发环境使用 127.0.0.1，生产环境使用 0.0.0.0
+port = 8000
+
+[database.mysql]
+host = "localhost"
+port = 3306
+user = "your_mysql_user"
+password = "your_mysql_password"
+database = "your_database_name"
+charset = "utf8mb4"
+pool_size = 5  # 开发环境使用较小值，生产环境使用较大值（如 20）
+
+[database.milvus]
+host = "localhost"
+port = 19530
+database = "default"
+collection_name = "your_collection_name"
+dimension = 1024
+index_type = "IVF_FLAT"
+metric_type = "L2"
+
+[model.embedding]
+provider = "openai"  # openai, custom
+model_name = "text-embedding-v4"
+api_key = "your_embedding_api_key"
+api_base = "https://api.openai.com/v1"  # 或自定义 API 地址
+dimension = 1024
+
+[model.llm]
+provider = "custom"  # openai, anthropic, custom
+model_name = "deepseek-v3.2-exp"  # 或 gpt-4, claude-sonnet-4-5 等
+api_base = "your_llm_api_base"
+api_key = "your_llm_api_key"
+temperature = 0.7
+max_tokens = 2000
+
+[rag]
+chunk_size = 500
+chunk_overlap = 50
+top_k = 5
+similarity_threshold = 0.7
+
+[agent_db]
+enabled = true  # 是否启用 Agent 数据库（用于会话持久性和记忆功能）
+num_history_runs = 5  # 历史记录运行次数，用于控制添加到上下文的历史消息数量（建议值：3-10）
+db_schema = "agno_demo"  # 数据库 schema 名称，用于生成表名（如 "agno_demo" 会生成 agno_demo_sessions, agno_demo_memories 等），默认为 "ai"
+# session_table = "agno_demo_sessions"  # 可选：自定义会话表名，如果设置则覆盖 db_schema 生成的表名
+# memory_table = "agno_demo_memories"  # 可选：自定义记忆表名，如果设置则覆盖 db_schema 生成的表名
+

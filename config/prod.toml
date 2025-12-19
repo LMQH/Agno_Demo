@@ -47,4 +47,5 @@ similarity_threshold = 0.7
 [agent_db]
 enabled = true
 num_history_runs = 5
+db_schema = "agno_rag_prod"  # 数据库 schema 名称，用于生成表名（如 agno_rag_prod_sessions, agno_rag_prod_memories 等）
 

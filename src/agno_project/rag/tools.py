@@ -13,11 +13,11 @@ class RAGRetrievalTool(Function):
         # 先初始化父类
         super().__init__(
             name="rag_retrieval",
-            description="从知识库中检索与查询相关的文档片段。当需要回答问题时，使用此工具从知识库中获取相关信息。",
+            description="从知识库中检索与查询相关的文档片段。这是回答问题的必要步骤，回答任何问题前都必须先调用此工具从知识库中获取相关信息。",
             args={
                 "query": {
                     "type": "string",
-                    "description": "要检索的查询文本",
+                    "description": "要检索的查询文本（通常是用户的问题或关键词）",
                     "required": True
                 },
                 "top_k": {
@@ -52,7 +52,11 @@ class RAGRetrievalTool(Function):
     
     async def run(self, query: str, top_k: Optional[int] = None) -> str:
         """执行 RAG 检索。"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
+            logger.info(f"开始执行 RAG 检索，查询: {query[:50]}...")
             top_k = top_k or self.config.rag.top_k
             results = await self.retriever.retrieve(
                 query=query,
@@ -62,8 +66,10 @@ class RAGRetrievalTool(Function):
             
             # 保存原始结果，供 RAGAgent 构建 sources 使用
             object.__setattr__(self, '_last_results', results)
+            logger.info(f"检索完成，找到 {len(results)} 条结果")
             
             if not results:
+                logger.warning("未找到相关文档")
                 return "未找到相关文档。"
             
             # 格式化检索结果
@@ -71,6 +77,7 @@ class RAGRetrievalTool(Function):
             for i, result in enumerate(results, 1):
                 formatted_results.append(
                     f"[文档片段 {i}]\n"
+                    f"来源文件: {result.get('file_name', '未知')}\n"
                     f"内容: {result['content']}\n"
                     f"相似度得分: {result['score']:.3f}\n"
                 )
@@ -79,5 +86,6 @@ class RAGRetrievalTool(Function):
         except Exception as e:
             # 清除结果
             object.__setattr__(self, '_last_results', None)
+            logger.error(f"检索过程中发生错误: {e}", exc_info=True)
             return f"检索过程中发生错误: {str(e)}"
 

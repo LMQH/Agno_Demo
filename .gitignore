@@ -62,3 +62,8 @@ requirements.txt
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Configuration files (use config.toml.template as template)
+config/dev.toml
+config/show.toml
+config/prod.toml
