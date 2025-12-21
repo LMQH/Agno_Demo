@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "agno-rag-system-collection",
 		"name": "Agno RAG System API",
-		"description": "基于 Agno 框架的 RAG 系统 API 接口集合\n\n## 使用说明\n\n1. 导入此集合到 Postman\n2. 设置环境变量 `base_url` 为你的服务器地址（默认：http://127.0.0.1:8000）\n3. 开始测试接口\n\n## 接口分组\n\n- **健康检查**：系统健康状态检查\n- **知识库管理**：文档的上传、查询、删除等操作\n- **RAG 查询**：智能问答接口\n- **系统信息**：系统统计和配置信息\n- **会话管理**：会话历史查询",
+		"description": "基于 Agno 框架的 RAG 系统 API 接口集合\n\n## 使用说明\n\n1. 导入此集合到 Postman\n2. 设置环境变量 `base_url` 为你的服务器地址（默认：http://127.0.0.1:8000）\n3. 开始测试接口\n\n## 接口分组\n\n- **健康检查**：系统健康状态检查\n- **知识库管理**：文档的上传、查询、删除等操作\n- **RAG 查询**：智能问答接口（支持会话和用户记忆）\n- **系统信息**：系统统计和配置信息\n- **会话管理**：会话历史查询\n- **记忆管理**：用户记忆功能状态和清理\n- **AgentOS**：基于 Agno AgentOS 的独立服务（挂载在 /agentos 路径）",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -204,7 +204,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"question\": \"文档中提到了什么内容？\",\n    \"top_k\": 5,\n    \"similarity_threshold\": 0.7,\n    \"session_id\": \"optional-session-id\"\n}",
+							"raw": "{\n    \"question\": \"文档中提到了什么内容？\",\n    \"top_k\": 5,\n    \"similarity_threshold\": 0.7,\n    \"session_id\": \"optional-session-id\",\n    \"user_id\": \"optional-user-id\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -222,12 +222,12 @@
 								"query"
 							]
 						},
-						"description": "向 RAG 系统提问，系统会从知识库中检索相关信息并生成答案\n\n**参数说明：**\n- `question`: 用户问题（必填）\n- `top_k`: 检索的文档片段数量（可选，默认使用配置值）\n- `similarity_threshold`: 相似度阈值（可选，默认使用配置值）\n- `session_id`: 会话 ID（可选，用于会话持久化）"
+						"description": "向 RAG 系统提问，系统会从知识库中检索相关信息并生成答案\n\n**参数说明：**\n- `question`: 用户问题（必填）\n- `top_k`: 检索的文档片段数量（可选，默认使用配置值）\n- `similarity_threshold`: 相似度阈值（可选，默认使用配置值）\n- `session_id`: 会话 ID（可选，用于会话持久化）\n- `user_id`: 用户 ID（可选，用于记忆功能，如果未提供则使用 session_id 或默认值）"
 					},
 					"response": []
 				},
 				{
-					"name": "查询问答（带会话）",
+					"name": "查询问答（带会话和用户）",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -238,7 +238,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"question\": \"继续上面的问题\",\n    \"top_k\": 5,\n    \"similarity_threshold\": 0.7,\n    \"session_id\": \"my-session-123\"\n}",
+							"raw": "{\n    \"question\": \"继续上面的问题\",\n    \"top_k\": 5,\n    \"similarity_threshold\": 0.7,\n    \"session_id\": \"{{session_id}}\",\n    \"user_id\": \"{{user_id}}\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -256,12 +256,12 @@
 								"query"
 							]
 						},
-						"description": "带会话 ID 的查询，可以保持对话上下文"
+						"description": "带会话 ID 和用户 ID 的查询，可以保持对话上下文和用户记忆"
 					},
 					"response": []
 				}
 			],
-			"description": "RAG 智能问答接口"
+			"description": "RAG 智能问答接口，支持会话持久化和用户记忆功能"
 		},
 		{
 			"name": "系统信息",
@@ -302,7 +302,7 @@
 								"stats"
 							]
 						},
-						"description": "获取系统统计信息，包括向量数据库统计、文档数量、环境信息等"
+						"description": "获取系统统计信息，包括向量数据库统计、文档数量、环境信息、AgentDB 状态等"
 					},
 					"response": []
 				}
@@ -336,6 +336,91 @@
 				}
 			],
 			"description": "会话历史管理接口"
+		},
+		{
+			"name": "记忆管理",
+			"item": [
+				{
+					"name": "获取记忆功能状态",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/memory/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"memory",
+								"status"
+							]
+						},
+						"description": "获取记忆功能的启用状态和配置信息，包括数据库连接状态、表创建状态等"
+					},
+					"response": []
+				},
+				{
+					"name": "清理用户记忆",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/memory/{{user_id}}/prune?keep_count=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"memory",
+								"{{user_id}}",
+								"prune"
+							],
+							"query": [
+								{
+									"key": "keep_count",
+									"value": "10",
+									"description": "保留的记忆数量（可选，默认 10）"
+								}
+							]
+						},
+						"description": "清理指定用户的记忆，保留最近的 N 条记忆。用于管理用户记忆数据，避免数据过多。\n\n**参数说明：**\n- `user_id`: 用户 ID（路径参数）\n- `keep_count`: 保留的记忆数量（查询参数，可选，默认 10）"
+					},
+					"response": []
+				}
+			],
+			"description": "用户记忆功能管理接口，包括状态查询和记忆清理"
+		},
+		{
+			"name": "AgentOS",
+			"item": [
+				{
+					"name": "AgentOS 服务说明",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/agentos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"agentos"
+							]
+						},
+						"description": "AgentOS 是基于 Agno AgentOS 的独立服务，挂载在 /agentos 路径下。\n\nAgentOS 提供了完整的 Agent 管理功能，包括：\n- Agent 的创建和管理\n- 会话和记忆管理\n- 知识库集成（Milvus）\n- MySQL 数据库持久化\n\n**注意**：AgentOS 服务需要正确配置 MySQL 和 Milvus 才能正常工作。如果初始化失败，主应用仍会继续运行，但 AgentOS 路由将不可用。\n\n访问 AgentOS 的 API 文档：\n- Swagger UI: {{base_url}}/agentos/docs\n- ReDoc: {{base_url}}/agentos/redoc"
+					},
+					"response": []
+				}
+			],
+			"description": "AgentOS 服务接口说明（基于 Agno AgentOS 框架）"
 		}
 	],
 	"variable": [
@@ -353,7 +438,11 @@
 			"key": "session_id",
 			"value": "my-session-123",
 			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "user-001",
+			"type": "string"
 		}
 	]
 }
-
