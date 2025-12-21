@@ -19,6 +19,7 @@
 - ✅ **多环境配置**：支持 dev、show、prod 三个环境的独立配置
 - ✅ **RESTful API**：提供完整的 FastAPI 接口，支持 Postman 测试
 - ✅ **Agno 集成**：基于 Agno Agent 框架，支持工具调用和会话管理
+- ✅ **AgentOS 支持**：提供基于 Agno AgentOS 的独立服务，支持 MySQL 和 Milvus 集成
 
 ## 技术栈
 
@@ -58,6 +59,9 @@ Agno_Agent/
 │       │   ├── custom_model.py  # 自定义模型类（Agno Model 实现）
 │       │   ├── tools.py       # RAG 工具（检索工具）
 │       │   └── agent.py       # RAG 智能体（基于 Agno Agent）
+│       ├── agentos/        # AgentOS 应用模块
+│       │   ├── __init__.py
+│       │   └── setup.py    # AgentOS 初始化模块（集成到主应用）
 │       └── utils/         # 工具函数（预留目录）
 ├── pyproject.toml                    # 项目依赖配置
 ├── start.sh                          # Linux 启动脚本（可选）
@@ -205,6 +209,21 @@ chmod +x start.sh
 - `--reload`: 开发模式，代码变更自动重载（生产环境建议移除）
 
 服务启动后，访问 `http://localhost:8000` 查看 API 文档。
+
+### AgentOS 集成
+
+AgentOS 已集成到主 FastAPI 应用中，无需单独启动。AgentOS 的路由已挂载到 `/agentos` 路径下。
+
+**访问地址：** `http://localhost:8000/agentos`
+
+**功能特性：**
+- 使用 MySQL 进行会话持久化
+- 使用 Milvus 作为知识库向量数据库
+- 支持从配置文件读取模型和数据库配置
+- 自动启用知识库搜索和上下文添加
+- 与主应用共享配置和资源
+
+**注意：** AgentOS 会在主应用启动时自动初始化，如果初始化失败，主应用会继续运行并记录警告日志。
 
 ## API 接口文档
 
@@ -398,6 +417,8 @@ chmod +x start.sh
 
 ### Python 代码示例
 
+#### RAG 系统使用示例
+
 ```python
 import asyncio
 from agno_project.knowledge_base.builder import KnowledgeBaseBuilder
@@ -422,6 +443,28 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+#### AgentOS 使用示例
+
+AgentOS 已集成到主应用中，可以通过主应用的 `/agentos` 路径访问：
+
+```python
+import requests
+
+# 主应用地址（AgentOS 挂载在 /agentos 路径下）
+base_url = "http://localhost:8000/agentos"
+
+# 发送消息给 Agent
+response = requests.post(
+    f"{base_url}/chat",
+    json={
+        "message": "你好，请介绍一下知识库的功能",
+        "session_id": "user-123"  # 可选，用于会话持久化
+    }
+)
+
+print(response.json())
+```
+
 ## 注意事项
 
 1. **API 密钥配置**：确保在配置文件中正确设置通义千问 API Key 和自定义 LLM API 地址
@@ -431,6 +474,8 @@ if __name__ == "__main__":
 5. **环境变量**：启动前设置 `ENVIRONMENT` 环境变量以选择配置文件
 6. **会话持久化**：如果启用了 `agent_db.enabled`，Agno 会在 MySQL 中自动创建会话管理表
 7. **依赖安装**：首次运行前请确保安装所有依赖，建议使用虚拟环境
+8. **AgentOS 配置**：AgentOS 已集成到主应用中，会自动从 `config/dev.toml` 读取 MySQL 和 Milvus 配置，确保配置文件正确设置
+9. **端口冲突**：主应用使用 8000 端口，AgentOS 路由挂载在 `/agentos` 路径下，无需单独端口
 
 ## 开发说明
 

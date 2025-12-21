@@ -13,6 +13,7 @@ from agno.agent import RunOutput
 from ..config import get_config
 from ..knowledge_base.builder import KnowledgeBaseBuilder
 from ..rag.agent import RAGAgent
+from ..agentos import get_agent_os_app
 
 # 配置日志
 logging.basicConfig(
@@ -30,12 +31,21 @@ app = FastAPI(
     debug=config.debug
 )
 
+# 配置日志
+logger = logging.getLogger(__name__)
+
 # 初始化组件
 kb_builder = KnowledgeBaseBuilder()
 rag_agent = RAGAgent()
 
-# 配置日志
-logger = logging.getLogger(__name__)
+# 集成 AgentOS
+try:
+    agent_os_app = get_agent_os_app()
+    # 挂载 AgentOS 的路由到 /agentos 路径
+    app.mount("/agentos", agent_os_app)
+    logger.info("✓ AgentOS 已集成到主应用，路由挂载在 /agentos")
+except Exception as e:
+    logger.warning(f"AgentOS 集成失败，将继续运行主应用: {e}")
 
 
 @app.on_event("startup")
