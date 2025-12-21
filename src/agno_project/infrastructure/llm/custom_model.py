@@ -6,7 +6,7 @@ from agno.models.message import Message
 import httpx
 import json
 import time
-from ..config import get_config, LLMConfig
+from ...config import get_config, LLMConfig
 
 
 class CustomModel(Model):
@@ -85,7 +85,7 @@ class CustomModel(Model):
         
         Args:
             delta: 增量响应数据
-            
+        
         Returns:
             增量内容字符串
         """
@@ -124,7 +124,7 @@ class CustomModel(Model):
         Args:
             messages: 消息列表
             **kwargs: 其他参数
-            
+        
         Yields:
             ModelResponse 对象（流式）
         """
@@ -170,7 +170,7 @@ class CustomModel(Model):
         Args:
             messages: 消息列表
             **kwargs: 其他参数
-            
+        
         Yields:
             ModelResponse 对象（流式）
         """

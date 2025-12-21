@@ -1,7 +1,7 @@
 """RAG 检索工具，供 Agno Agent 调用。"""
 from typing import List, Dict, Any, Optional
 from agno.tools import Function
-from .retriever import RAGRetriever
+from ..infrastructure.database.retriever import RAGRetriever
 from ..config import get_config
 
 

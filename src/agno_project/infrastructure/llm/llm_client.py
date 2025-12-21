@@ -1,24 +1,25 @@
-"""用于自定义模型推理的 LLM 客户端。"""
-from typing import List, Dict, Any, Optional
+"""LLM 客户端实现。"""
+from typing import Optional
 import httpx
-import json
-from ..config import get_config, LLMConfig
+from ..database.base import BaseDatabase
+from ...config import get_config, LLMConfig
 
 
 class LLMClient:
     """自定义 LLM API 客户端（deepseek-v3.2-exp）。"""
     
     def __init__(self, config: Optional[LLMConfig] = None):
-        """初始化 LLM 客户端。"""
-        if config is None:
-            config = get_config().llm
+        """初始化 LLM 客户端。
         
-        self.config = config
-        self.api_base = config.api_base
-        self.api_key = config.api_key
-        self.model_name = config.model_name
-        self.temperature = config.temperature
-        self.max_tokens = config.max_tokens
+        Args:
+            config: LLM 配置对象，如果为 None 则使用默认配置
+        """
+        self.config = config or get_config().llm
+        self.api_base = self.config.api_base
+        self.api_key = self.config.api_key
+        self.model_name = self.config.model_name
+        self.temperature = self.config.temperature
+        self.max_tokens = self.config.max_tokens
     
     def _get_headers(self) -> dict:
         """获取 API 请求头。"""

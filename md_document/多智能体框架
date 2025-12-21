@@ -1,0 +1,69 @@
+Agno_Agent/
+├── config/
+│   ├── dev.toml
+│   ├── show.toml
+│   └── prod.toml
+│
+├── src/
+│   └── agno_project/
+│
+│       ├── api/
+│       │   ├── main.py
+│       │   └── run.py
+│       │
+│       ├── config.py
+│       │
+│       ├── infrastructure/          # 纯基础设施层（无决策）
+│       │   ├── llm/
+│       │   │   ├── base.py
+│       │   │   └── llm_client.py
+│       │   ├── database/
+│       │   │   ├── mysql_client.py
+│       │   │   ├── milvus_client.py
+│       │   │   └── base.py
+│       │   └── embeddings/
+│       │       └── embedder.py
+│       │
+│       ├── tools/                   # 能力工具层（I/O、检索、计算）
+│       │   ├── rag_retrieval_tool.py
+│       │   ├── sql_query_tool.py
+│       │   ├── rerank_tool.py
+│       │   └── safety_check_tool.py
+│       │
+│       ├── agents/
+│       │   ├── __init__.py
+│       │   │
+│       │   ├── planning/             # ① 规划智能体
+│       │   │   └── planner_agent.py
+│       │   │
+│       │   ├── capability/           # ② 能力型智能体
+│       │   │   └── rag_agent.py
+│       │   │
+│       │   ├── debate/               # ③ 讨论团队
+│       │   │   ├── conservative_agent.py
+│       │   │   ├── radical_agent.py
+│       │   │   └── official_agent.py
+│       │   │
+│       │   ├── judgment/             # ④ 判断 / 反思智能体
+│       │   │   └── judge_agent.py
+│       │   │
+│       │   ├── terminal/             # ⑤ 最终输出智能体
+│       │   │   └── reply_agent.py
+│       │   │
+│       │   └── registry.py           # Agent 注册与发现
+│       │
+│       ├── protocols/               # 系统“宪法”与约束
+│       │   ├── plan_schema.py        # Planner 输出结构
+│       │   ├── debate_protocol.py    # 讨论回合控制
+│       │   ├── judgment_rules.py     # 打回 / 终止规则
+│       │   └── safety_policy.py
+│       │
+│       ├── memory/                  # 可选：会话 / 反思记忆
+│       │   ├── conversation_store.py
+│       │   └── reasoning_trace.py
+│       │
+│       └── utils/
+│           └── logging.py
+│
+├── pyproject.toml
+└── README.md

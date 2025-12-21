@@ -12,7 +12,7 @@ from agno.agent import RunOutput
 
 from ..config import get_config
 from ..knowledge_base.builder import KnowledgeBaseBuilder
-from ..rag.agent import RAGAgent
+from ..agents.capability.rag_agent import RAGAgent
 from ..agentos import get_agent_os_app
 
 # 配置日志

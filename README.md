@@ -422,7 +422,7 @@ AgentOS 已集成到主 FastAPI 应用中，无需单独启动。AgentOS 的路�
 ```python
 import asyncio
 from agno_project.knowledge_base.builder import KnowledgeBaseBuilder
-from agno_project.rag.agent import RAGAgent
+from agno_project.agents.capability.rag_agent import RAGAgent
 
 async def main():
     # 构建知识库

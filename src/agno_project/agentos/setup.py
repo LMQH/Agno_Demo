@@ -11,7 +11,7 @@ import logging
 import os
 
 from ..config import get_config
-from ..rag.custom_model import CustomModel
+from ..infrastructure.llm.custom_model import CustomModel
 
 logger = logging.getLogger(__name__)
 
