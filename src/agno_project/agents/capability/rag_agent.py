@@ -42,7 +42,7 @@ class RAGAgent:
         
         # RAG Agent 不再使用 Agent、数据库或 LLM 客户端
         # 直接使用检索器进行检索，更加简单高效
-        logger.info("RAG Agent 初始化完成（仅检索模式，直接使用检索器）")
+        logger.debug("RAG Agent 初始化完成（仅检索模式，直接使用检索器）")
     
     async def retrieve_chunks(
         self,
@@ -67,7 +67,7 @@ class RAGAgent:
                 "num_chunks": int
             }
         """
-        logger.info(f"RAG Agent 开始检索: {query[:50]}...")
+        logger.debug(f"RAG Agent 开始检索: {query[:50]}...")
         
         # 直接调用检索器，不使用 Agent（因为 Agent 可能会尝试回答或判断）
         try:
@@ -87,7 +87,7 @@ class RAGAgent:
                     "score": round(result.get("score", 0.0), 4)
                 })
             
-            logger.info(f"检索完成，找到 {len(chunks)} 个文档片段")
+            logger.debug(f"检索完成，找到 {len(chunks)} 个文档片段")
             
             return {
                 "query": query,

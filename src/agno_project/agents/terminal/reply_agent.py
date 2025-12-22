@@ -71,13 +71,14 @@ class ReplyAgent:
             agent_kwargs["db"] = db
         
         self.agent = Agent(**agent_kwargs)
-        logger.info("Reply Agent 初始化完成")
+        logger.debug("Reply Agent 初始化完成")
     
     async def generate_reply(
         self,
         question: str,
-        debate_state: Optional[DebateState] = None,
-        direct_response: Optional[str] = None,
+        chunks: Optional[List[Dict[str, Any]]] = None,
+        debate_result: Optional[Dict[str, Any]] = None,
+        judgment_result: Optional[Any] = None,
         session_id: Optional[str] = None,
         user_id: Optional[str] = None
     ) -> str:
@@ -85,40 +86,67 @@ class ReplyAgent:
         
         Args:
             question: 原始问题
-            debate_state: 讨论状态（如果进行了多 Agent 讨论）
-            direct_response: 直接响应（如果是直接工具执行）
+            chunks: RAG 检索到的 chunks（可选）
+            debate_result: 讨论结果（可选，如果进行了讨论）
+            judgment_result: 判断结果（可选）
             session_id: 会话 ID
             user_id: 用户 ID
         
         Returns:
             最终回答
         """
-        if direct_response:
-            # 如果是直接响应，只需要简单整合
-            prompt = f"""问题：{question}
-
-直接响应结果：{direct_response}
-
-请基于上述结果，生成结构化的最终回答。"""
-        elif debate_state:
-            # 如果有讨论状态，需要整合各立场观点
-            rounds_summary = []
-            for round_info in debate_state.rounds:
-                rounds_summary.append(f"{round_info.agent_name}：{round_info.content}")
-            
-            prompt = f"""问题：{question}
-
-多 Agent 讨论结果：
-{chr(10).join(rounds_summary) if rounds_summary else '无讨论内容'}
-
-请整合上述讨论结果，生成结构化的最终回答。明确区分：
-1. 事实共识
-2. 立场分歧（分别列出各立场的核心观点）
-3. 不确定性与未来变量"""
+        # 构建提示
+        prompt_parts = [f"问题：{question}"]
+        
+        # 添加 chunks（如果有）
+        if chunks:
+            chunks_text = "\n\n".join([
+                f"来源：{chunk.get('file_name', '未知')}\n内容：{chunk.get('content', '')}"
+                for chunk in chunks[:10]  # 最多取前 10 个
+            ])
+            prompt_parts.append(f"\n参考资料：\n{chunks_text}")
+        
+        # 添加讨论结果（如果有）
+        if debate_result:
+            prompt_parts.append(
+                f"\n讨论团队讨论结果（轮次 {debate_result.get('round', 0)}）：\n"
+                f"{debate_result.get('summary', '无讨论内容')}"
+            )
+        
+        # 添加判断结果（如果有）
+        if judgment_result:
+            prompt_parts.append(
+                f"\n判断智能体评审意见：\n"
+                f"动作：{judgment_result.action.value}\n"
+                f"理由：{judgment_result.reasoning}"
+            )
+            if judgment_result.issues:
+                prompt_parts.append(f"发现的问题：\n" + "\n".join(f"- {issue}" for issue in judgment_result.issues))
+            if judgment_result.improvements:
+                prompt_parts.append(f"改进建议：\n" + "\n".join(f"- {improvement}" for improvement in judgment_result.improvements))
+        
+        # 根据输入情况构建不同的提示
+        if debate_result:
+            # 有讨论结果，需要整合各立场观点
+            prompt_parts.append(
+                "\n请整合上述信息，生成结构化的最终回答。明确区分：\n"
+                "1. 事实共识（各方都认可的事实）\n"
+                "2. 立场分歧（分别列出各立场的核心观点）\n"
+                "3. 不确定性与未来变量（无法确定或需要未来验证的部分）\n"
+                "4. 参考来源（引用具体的参考资料）"
+            )
+        elif chunks:
+            # 只有 chunks，基于参考资料回答
+            prompt_parts.append(
+                "\n请基于上述参考资料，生成结构化的最终回答。"
+            )
         else:
-            # 没有讨论也没有直接响应（不应该发生）
-            logger.warning("Reply Agent 收到空输入")
-            return "无法生成回答：缺少必要的输入信息"
+            # 只有问题，直接回答
+            prompt_parts.append(
+                "\n请基于你的知识，生成结构化的最终回答。"
+            )
+        
+        prompt = "\n".join(prompt_parts)
         
         try:
             response = await self.agent.arun(

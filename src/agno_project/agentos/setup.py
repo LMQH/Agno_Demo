@@ -104,8 +104,8 @@ def create_agent_os() -> AgentOS:
         )
         
         logger.info(f"✓ Milvus 向量数据库连接成功: {milvus_uri}")
-        logger.info(f"  Collection: {milvus_config.collection_name}, Dimension: {milvus_config.dimension}")
-        logger.info(f"  Embedding Model: {embedding_config.model_name}")
+        logger.debug(f"  Collection: {milvus_config.collection_name}, Dimension: {milvus_config.dimension}")
+        logger.debug(f"  Embedding Model: {embedding_config.model_name}")
         
         # ========== 创建 Agent ==========
         assistant = Agent(

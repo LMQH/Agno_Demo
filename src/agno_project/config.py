@@ -111,10 +111,10 @@ def get_local_ip() -> str:
                 0x8915,  # SIOCGIFADDR，用于"获取接口地址"
                 struct.pack('256s', b'eth0')
             )[20:24])
-            logger.info(f"[Linux] 通过 eth0 获取内网 IP: {ip}")
+            logger.debug(f"[Linux] 通过 eth0 获取内网 IP: {ip}")
             return ip
         except Exception as e:
-            logger.info(f"读取 eth0 失败，回退到通用方法: {e}")
+            logger.debug(f"读取 eth0 失败，回退到通用方法: {e}")
     
     # 通用方法：适用于 Windows / macOS / Linux 回退
     try:
@@ -123,7 +123,7 @@ def get_local_ip() -> str:
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
-        logger.info(f"[{system}] 通过 socket.connect 获取 IP: {ip}")
+        logger.debug(f"[{system}] 通过 socket.connect 获取 IP: {ip}")
         return ip
     except Exception as e:
         logger.error(f"获取本地 IP 失败: {e}")
@@ -182,7 +182,7 @@ class AppConfig(BaseSettings):
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
         
-        logger.info(f"加载配置文件: {config_path}")
+        logger.debug(f"加载配置文件: {config_path}")
         
         with open(config_path, "rb") as f:
             config_data = tomllib.load(f)

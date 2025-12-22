@@ -52,10 +52,10 @@ except Exception as e:
 async def startup_event():
     """应用启动时的初始化事件，用于初始化 Agno 数据库表。"""
     try:
-        logger.info("=" * 60)
-        logger.info("开始初始化 Agno 数据库表...")
-        logger.info("会话 ID: session_start")
-        logger.info("用户 ID: lmqh")
+        logger.debug("=" * 60)
+        logger.debug("开始初始化 Agno 数据库表...")
+        logger.debug("会话 ID: session_start")
+        logger.debug("用户 ID: lmqh")
         
         # 触发一次简单的 Agent 调用来初始化数据库表
         # 这会让 Agno 自动创建必要的表（agno_memories, agno_runs 等）
@@ -72,8 +72,8 @@ async def startup_event():
             session_id="session_start"
         )
         
-        logger.info("Agno 数据库表初始化成功")
-        logger.info("=" * 60)
+        logger.debug("Agno 数据库表初始化成功")
+        logger.debug("=" * 60)
     except Exception as e:
         # 初始化失败不影响应用启动，只记录警告
         logger.warning(f"Agno 数据库表初始化失败（将在首次使用时自动创建）: {e}")
@@ -208,11 +208,11 @@ async def upload_document(
     logger = logging.getLogger(__name__)
     
     try:
-        logger.info(f"开始上传文件: {file.filename}")
+        logger.debug(f"开始上传文件: {file.filename}")
         content_bytes = await file.read()
         content = content_bytes.decode('utf-8')
         content_size = len(content)
-        logger.info(f"文件读取完成: {file.filename}, 大小: {content_size} 字符")
+        logger.debug(f"文件读取完成: {file.filename}, 大小: {content_size} 字符")
         
         # 立即释放bytes内存
         del content_bytes
@@ -231,7 +231,7 @@ async def upload_document(
         # 释放content内存
         del content
         
-        logger.info(f"文件处理完成: {file.filename}, document_id={result.get('file_id')}")
+        logger.info(f"文件上传并处理完成: {file.filename}, document_id={result.get('file_id')}")
         
         # 保持API兼容性，将file_id映射为document_id
         return {

@@ -206,7 +206,7 @@ class AgnoMarkdownChunker(BaseChunker):
                 })
             
             if chunks:
-                logger.info(f"使用MarkdownChunking切分文档，生成 {len(chunks)} 个chunks")
+                logger.debug(f"使用MarkdownChunking切分文档，生成 {len(chunks)} 个chunks")
                 return chunks
             else:
                 logger.warning("MarkdownChunking未生成有效chunks，将使用fallback方法")
@@ -219,7 +219,7 @@ class AgnoMarkdownChunker(BaseChunker):
         except Exception as e:
             logger.error(f"使用MarkdownChunking切分文档时出错: {str(e)}", exc_info=True)
             # 出错时使用fallback方法
-            logger.info("使用fallback递归切分方法")
+            logger.debug("使用fallback递归切分方法")
             if self._fallback_chunker:
                 return self._fallback_chunker.chunk(content, metadata)
             else:

@@ -84,7 +84,7 @@ class PlannerAgent:
             agent_kwargs["db"] = db
         
         self.agent = Agent(**agent_kwargs)
-        logger.info("Router Agent 初始化完成")
+        logger.debug("Router Agent 初始化完成")
     
     async def plan(
         self,
@@ -181,7 +181,7 @@ class PlannerAgent:
             
             # 如果成功解析，返回结果
             if plan_output:
-                logger.info(
+                logger.debug(
                     f"Router Agent 决策成功: path={plan_output.processing_path.value}, "
                     f"complexity={plan_output.complexity_level.value}, "
                     f"risk={plan_output.risk_level.value}"

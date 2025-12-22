@@ -88,26 +88,26 @@ class KnowledgeBaseBuilder:
         if content is None:
             if not source_file.exists():
                 raise FileNotFoundError(f"File not found: {file_path}")
-            logger.info(f"开始处理文件: {source_file}")
+            logger.debug(f"开始处理文件: {source_file}")
             content = await self._read_markdown_file(source_file)
             content_to_save = content  # 保存内容用于后续文件写入
         else:
-            logger.info(f"使用提供的文件内容，文件路径: {source_file}")
+            logger.debug(f"使用提供的文件内容，文件路径: {source_file}")
             content_to_save = content  # 保存内容用于后续文件写入
         
-        logger.info(f"文件内容读取完成，大小: {len(content)} 字符")
+        logger.debug(f"文件内容读取完成，大小: {len(content)} 字符")
         
         # 创建切分器
-        logger.info("开始创建切分器")
+        logger.debug("开始创建切分器")
         chunker = ChunkerFactory.create_chunker(
             method=chunk_method,
             chunk_size=self.config.rag.chunk_size,
             chunk_overlap=self.config.rag.chunk_overlap
         )
-        logger.info(f"切分器创建完成: method={chunk_method}, chunk_size={self.config.rag.chunk_size}")
+        logger.debug(f"切分器创建完成: method={chunk_method}, chunk_size={self.config.rag.chunk_size}")
         
         # 切分文档（在后台线程执行，避免阻塞）
-        logger.info("开始切分文档")
+        logger.debug("开始切分文档")
         chunk_start_time = time.time()
         try:
             loop = asyncio.get_event_loop()
@@ -115,7 +115,7 @@ class KnowledgeBaseBuilder:
             # 这里保持使用默认的ThreadPoolExecutor，因为chunk操作主要是字符串操作
             chunks = await loop.run_in_executor(None, chunker.chunk, content, metadata)
             chunk_time = time.time() - chunk_start_time
-            logger.info(f"文档切分完成: {len(chunks)} 个chunks，耗时 {chunk_time:.2f}秒")
+            logger.debug(f"文档切分完成: {len(chunks)} 个chunks，耗时 {chunk_time:.2f}秒")
         except Exception as e:
             logger.error(f"文档切分失败: {str(e)}", exc_info=True)
             raise
@@ -147,12 +147,12 @@ class KnowledgeBaseBuilder:
             ).fetchone()
             if result:
                 existing_file_id = result[0]
-                logger.info(f"发现同名文件，将删除旧文件记录: file_id={existing_file_id}, file_name={unique_file_name}")
+                logger.debug(f"发现同名文件，将删除旧文件记录: file_id={existing_file_id}, file_name={unique_file_name}")
                 # 删除旧文件的所有记录
                 try:
                     # 从 Milvus 删除向量
                     self.milvus_client.delete_by_file_ids([existing_file_id])
-                    logger.info(f"已删除Milvus中的向量: file_id={existing_file_id}")
+                    logger.debug(f"已删除Milvus中的向量: file_id={existing_file_id}")
                     
                     # 从 MySQL 删除文件记录
                     session.execute(
@@ -160,12 +160,12 @@ class KnowledgeBaseBuilder:
                         {"file_id": existing_file_id}
                     )
                     session.commit()
-                    logger.info(f"已删除MySQL记录: file_id={existing_file_id}")
+                    logger.debug(f"已删除MySQL记录: file_id={existing_file_id}")
                     
                     # 删除文件
                     if target_file_path.exists():
                         target_file_path.unlink()
-                        logger.info(f"已删除文件: {target_file_path}")
+                        logger.debug(f"已删除文件: {target_file_path}")
                 except Exception as e:
                     logger.warning(f"删除旧文件记录时出错（继续处理新文件）: {e}", exc_info=True)
                     session.rollback()
@@ -175,7 +175,7 @@ class KnowledgeBaseBuilder:
             # 如果源文件存在，复制文件
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, shutil.copy2, source_file, target_file_path)
-            logger.info(f"文件已保存: {target_file_path}")
+            logger.debug(f"文件已保存: {target_file_path}")
         elif content_to_save is not None:
             # 如果源文件不存在但提供了内容，保存内容到文件
             def _write_file():
@@ -185,16 +185,16 @@ class KnowledgeBaseBuilder:
             
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, _write_file)
-            logger.info(f"文件已保存: {target_file_path}")
+            logger.debug(f"文件已保存: {target_file_path}")
         else:
-            logger.info("跳过文件保存（无内容可保存）")
+            logger.debug("跳过文件保存（无内容可保存）")
         
         # 释放content_to_save内存
         if content_to_save is not None:
             del content_to_save
         
         # 保存文件元数据到 MySQL
-        logger.info("开始写入MySQL")
+        logger.debug("开始写入MySQL")
         try:
             with self.mysql_client.get_session() as session:
                 from sqlalchemy import text
@@ -210,7 +210,7 @@ class KnowledgeBaseBuilder:
                 )
                 session.commit()
                 file_id = result.lastrowid
-                logger.info(f"MySQL记录已创建: file_id={file_id}, file_name={unique_file_name}")
+                logger.debug(f"MySQL记录已创建: file_id={file_id}, file_name={unique_file_name}")
         except Exception as e:
             logger.error(f"MySQL写入失败: {e}", exc_info=True)
             # 删除已保存的文件
@@ -221,7 +221,7 @@ class KnowledgeBaseBuilder:
         # 优化：不预先提取所有chunk内容，而是按需处理
         # 这样可以避免chunk_contents占用大量内存
         num_chunks = len(chunks)
-        logger.info(f"准备处理 {num_chunks} 个chunks")
+        logger.debug(f"准备处理 {num_chunks} 个chunks")
         
         # 注意：保留chunks引用，因为我们需要在循环中访问chunk["content"]
         # 但会在处理完每个批次后逐步释放
@@ -233,7 +233,7 @@ class KnowledgeBaseBuilder:
             avg_chunk_size = sample_chars / sample_size
         else:
             avg_chunk_size = 500  # 默认值
-        logger.info(f"估算平均chunk大小: {avg_chunk_size:.0f} 字符（基于前 {sample_size} 个chunks）")
+        logger.debug(f"估算平均chunk大小: {avg_chunk_size:.0f} 字符（基于前 {sample_size} 个chunks）")
         
         # 动态调整批量大小（减小批量大小，降低内存占用）
         if avg_chunk_size > 1000:
@@ -245,7 +245,7 @@ class KnowledgeBaseBuilder:
         
         total_batches = (num_chunks + batch_size - 1) // batch_size
         
-        logger.info(f"开始生成嵌入向量: {num_chunks} 个chunks，平均大小 {avg_chunk_size:.0f} 字符，分 {total_batches} 批处理（每批 {batch_size} 个）")
+        logger.debug(f"开始生成嵌入向量: {num_chunks} 个chunks，平均大小 {avg_chunk_size:.0f} 字符，分 {total_batches} 批处理（每批 {batch_size} 个）")
         embedding_start_time = time.time()
         insert_start_time = time.time()
         
@@ -261,13 +261,13 @@ class KnowledgeBaseBuilder:
                 batch_num = i // batch_size + 1
                 
                 # 生成当前批次的嵌入向量（添加超时和日志）
-                logger.info(f"批次 {batch_num}/{total_batches}: 开始生成嵌入向量（{len(batch)} 个chunks）")
+                logger.debug(f"批次 {batch_num}/{total_batches}: 开始生成嵌入向量（{len(batch)} 个chunks）")
                 try:
                     batch_embeddings = await asyncio.wait_for(
                         self.embedder.generate_embeddings(batch),
                         timeout=300.0  # 5分钟超时
                     )
-                    logger.info(f"批次 {batch_num}: 嵌入向量生成完成，共 {len(batch_embeddings)} 个向量")
+                    logger.debug(f"批次 {batch_num}: 嵌入向量生成完成，共 {len(batch_embeddings)} 个向量")
                 except asyncio.TimeoutError:
                     logger.error(f"批次 {batch_num}: 嵌入向量生成超时（超过5分钟）")
                     raise RuntimeError(f"嵌入向量生成超时（批次 {batch_num}）")
@@ -285,7 +285,7 @@ class KnowledgeBaseBuilder:
                         flush=False
                     )
                     inserted_count += len(batch)
-                    logger.info(f"批次 {batch_num}: 成功插入 {len(batch)} 个向量到Milvus")
+                    logger.debug(f"批次 {batch_num}: 成功插入 {len(batch)} 个向量到Milvus")
                     
                     # 立即释放内存（非常重要！）
                     del batch_embeddings
@@ -300,7 +300,7 @@ class KnowledgeBaseBuilder:
                     # 每几批flush一次
                     if batch_num % insert_batch_size == 0:
                         self.milvus_client.collection.flush()
-                        logger.info(f"已插入 {inserted_count} 个向量到Milvus并flush")
+                        logger.debug(f"已插入 {inserted_count} 个向量到Milvus并flush")
                 except Exception as e:
                     logger.error(f"插入向量失败（批次 {batch_num}）: {e}", exc_info=True)
                     # 立即释放内存，即使失败也要释放
@@ -318,7 +318,7 @@ class KnowledgeBaseBuilder:
                                 {"file_id": file_id}
                             )
                             session.commit()
-                            logger.info(f"已回滚MySQL记录: file_id={file_id}")
+                            logger.debug(f"已回滚MySQL记录: file_id={file_id}")
                     except Exception as rollback_error:
                         logger.error(f"回滚MySQL记录失败: {rollback_error}")
                     raise RuntimeError(f"向量插入失败（批次 {batch_num}）: {e}")
@@ -343,7 +343,7 @@ class KnowledgeBaseBuilder:
             # 清理：删除已插入的向量
             try:
                 self.milvus_client.delete_by_file_ids([file_id])
-                logger.info(f"已清理Milvus中的向量: file_id={file_id}")
+                logger.debug(f"已清理Milvus中的向量: file_id={file_id}")
             except Exception as cleanup_error:
                 logger.error(f"清理Milvus向量失败: {cleanup_error}")
             # 删除MySQL记录
@@ -355,14 +355,14 @@ class KnowledgeBaseBuilder:
                         {"file_id": file_id}
                     )
                     session.commit()
-                    logger.info(f"已清理MySQL记录: file_id={file_id}")
+                    logger.debug(f"已清理MySQL记录: file_id={file_id}")
             except Exception as cleanup_error:
                 logger.error(f"清理MySQL记录失败: {cleanup_error}")
             # 删除文件
             try:
                 if target_file_path.exists():
                     target_file_path.unlink()
-                    logger.info(f"已删除文件: {target_file_path}")
+                    logger.debug(f"已删除文件: {target_file_path}")
             except Exception as cleanup_error:
                 logger.error(f"删除文件失败: {cleanup_error}")
             raise

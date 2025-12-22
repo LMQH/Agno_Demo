@@ -8,7 +8,8 @@ class JudgmentAction(str, Enum):
     CONTINUE = "continue"  # 继续讨论
     TERMINATE = "terminate"  # 终止讨论
     REQUEST_SPECIFIC_RESPONSE = "request_specific_response"  # 要求特定 Agent 回应
-    ESCALATE = "escalate"  # 升级处理（如需要更多信息）
+    ESCALATE = "escalate"  # 升级处理（如需要更多信息，包括请求 RAG 检索）
+    REQUEST_RAG = "request_rag"  # 请求 RAG 检索更多信息
 
 
 class JudgmentOutput:

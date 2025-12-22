@@ -56,7 +56,7 @@ class RAGRetrievalTool(Function):
         logger = logging.getLogger(__name__)
         
         try:
-            logger.info(f"开始执行 RAG 检索，查询: {query[:50]}...")
+            logger.debug(f"开始执行 RAG 检索，查询: {query[:50]}...")
             top_k = top_k or self.config.rag.top_k
             results = await self.retriever.retrieve(
                 query=query,
@@ -66,10 +66,10 @@ class RAGRetrievalTool(Function):
             
             # 保存原始结果，供 RAGAgent 构建 sources 使用
             object.__setattr__(self, '_last_results', results)
-            logger.info(f"检索完成，找到 {len(results)} 条结果")
+            logger.debug(f"检索完成，找到 {len(results)} 条结果")
             
             if not results:
-                logger.warning("未找到相关文档")
+                logger.debug("未找到相关文档")
                 return "未找到相关文档。"
             
             # 格式化检索结果

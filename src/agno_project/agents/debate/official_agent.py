@@ -69,7 +69,7 @@ class OfficialAgent:
             agent_kwargs["db"] = db
         
         self.agent = Agent(**agent_kwargs)
-        logger.info("Official Agent 初始化完成")
+        logger.debug("Official Agent 初始化完成")
     
     async def respond(
         self,

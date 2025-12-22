@@ -69,7 +69,7 @@ class RadicalAgent:
             agent_kwargs["db"] = db
         
         self.agent = Agent(**agent_kwargs)
-        logger.info("Radical Agent 初始化完成")
+        logger.debug("Radical Agent 初始化完成")
     
     async def respond(
         self,
