@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "agno-rag-system-collection",
-		"name": "Agno RAG System API",
-		"description": "基于 Agno 框架的 RAG 系统 API 接口集合\n\n## 使用说明\n\n1. 导入此集合到 Postman\n2. 设置环境变量 `base_url` 为你的服务器地址（默认：http://127.0.0.1:8000）\n3. 开始测试接口\n\n## 接口分组\n\n- **健康检查**：系统健康状态检查\n- **知识库管理**：文档的上传、查询、删除等操作\n- **RAG 查询**：智能问答接口（支持会话和用户记忆）\n- **系统信息**：系统统计和配置信息\n- **会话管理**：会话历史查询\n- **记忆管理**：用户记忆功能状态和清理\n- **AgentOS**：基于 Agno AgentOS 的独立服务（挂载在 /agentos 路径）",
+		"name": "Agno Multi-Agent RAG System API",
+		"description": "基于 Agno 框架的多智能体 RAG 系统 API 接口集合\n\n## 架构说明\n\n本系统采用多智能体架构，查询流程如下：\n1. **Planning 智能体**：判断处理路径（direct、rag_only、multi_agent_debate、reject）\n2. **RAG 智能体**：检索相关文档片段（仅检索，不生成答案）\n3. **讨论团队**：多立场讨论（激进派、保守派、官方叙事）\n4. **判断智能体**：评估讨论质量，控制流程\n5. **Reply 智能体**：整合结果并生成最终答案\n\n## 使用说明\n\n1. 导入此集合到 Postman\n2. 设置环境变量 `base_url` 为你的服务器地址（默认：http://127.0.0.1:8000）\n3. 开始测试接口\n\n## 接口分组\n\n- **健康检查**：系统健康状态检查\n- **知识库管理**：文档的上传、查询、删除等操作\n- **RAG 查询**：多智能体智能问答接口（支持会话和用户记忆）\n- **系统信息**：系统统计和配置信息\n- **AgentOS**：基于 Agno AgentOS 的独立服务（挂载在 /agentos 路径）\n\n## 重要说明\n\n- 会话历史和记忆管理功能已由 WorkflowController 内部处理，不再提供独立端点\n- 查询响应包含多智能体架构的完整信息（processing_path、plan、debate_result、judgment_result）",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -222,7 +222,7 @@
 								"query"
 							]
 						},
-						"description": "向 RAG 系统提问，系统会从知识库中检索相关信息并生成答案\n\n**参数说明：**\n- `question`: 用户问题（必填）\n- `top_k`: 检索的文档片段数量（可选，默认使用配置值）\n- `similarity_threshold`: 相似度阈值（可选，默认使用配置值）\n- `session_id`: 会话 ID（可选，用于会话持久化）\n- `user_id`: 用户 ID（可选，用于记忆功能，如果未提供则使用 session_id 或默认值）"
+						"description": "向多智能体 RAG 系统提问，系统会通过以下流程处理：\n1. Planning 智能体判断处理路径\n2. RAG 智能体检索相关文档（如果需要）\n3. 讨论团队进行多立场讨论（如果需要）\n4. 判断智能体评估讨论质量\n5. Reply 智能体生成最终答案\n\n**请求参数说明：**\n- `question`: 用户问题（必填）\n- `top_k`: 检索的文档片段数量（可选，默认使用配置值）\n- `similarity_threshold`: 相似度阈值（可选，默认使用配置值）\n- `session_id`: 会话 ID（可选，用于会话持久化）\n- `user_id`: 用户 ID（可选，用于记忆功能，如果未提供则使用 session_id 或默认值）\n\n**响应字段说明：**\n- `question`: 原始问题\n- `answer`: 最终答案（由 Reply 智能体生成）\n- `sources`: 检索到的文档片段列表\n- `num_sources`: 文档片段数量\n- `session_id`: 会话 ID\n- `processing_path`: 处理路径（direct、rag_only、multi_agent_debate、reject）\n- `plan`: 规划结果（包含复杂度、风险等级、是否需要检索等信息）\n- `debate_result`: 讨论结果（如果进行了讨论，包含讨论摘要和轮次）\n- `judgment_result`: 判断结果（如果进行了讨论，包含判断动作、理由、问题、改进建议）"
 					},
 					"response": []
 				},
@@ -261,7 +261,7 @@
 					"response": []
 				}
 			],
-			"description": "RAG 智能问答接口，支持会话持久化和用户记忆功能"
+			"description": "多智能体 RAG 智能问答接口，支持会话持久化和用户记忆功能。系统会根据问题复杂度自动选择处理路径，可能包括多立场讨论。"
 		},
 		{
 			"name": "系统信息",
@@ -308,95 +308,6 @@
 				}
 			],
 			"description": "系统信息和配置查询接口"
-		},
-		{
-			"name": "会话管理",
-			"item": [
-				{
-					"name": "获取会话历史",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/v1/sessions/{{session_id}}/history",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"sessions",
-								"{{session_id}}",
-								"history"
-							]
-						},
-						"description": "获取指定会话的历史记录，需要先启用 agent_db.enabled 配置"
-					},
-					"response": []
-				}
-			],
-			"description": "会话历史管理接口"
-		},
-		{
-			"name": "记忆管理",
-			"item": [
-				{
-					"name": "获取记忆功能状态",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/v1/memory/status",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"memory",
-								"status"
-							]
-						},
-						"description": "获取记忆功能的启用状态和配置信息，包括数据库连接状态、表创建状态等"
-					},
-					"response": []
-				},
-				{
-					"name": "清理用户记忆",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/memory/{{user_id}}/prune?keep_count=10",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"memory",
-								"{{user_id}}",
-								"prune"
-							],
-							"query": [
-								{
-									"key": "keep_count",
-									"value": "10",
-									"description": "保留的记忆数量（可选，默认 10）"
-								}
-							]
-						},
-						"description": "清理指定用户的记忆，保留最近的 N 条记忆。用于管理用户记忆数据，避免数据过多。\n\n**参数说明：**\n- `user_id`: 用户 ID（路径参数）\n- `keep_count`: 保留的记忆数量（查询参数，可选，默认 10）"
-					},
-					"response": []
-				}
-			],
-			"description": "用户记忆功能管理接口，包括状态查询和记忆清理"
 		},
 		{
 			"name": "AgentOS",

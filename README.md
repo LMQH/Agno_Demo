@@ -1,21 +1,26 @@
-# Agno RAG System
+# Agno Multi-Agent RAG System
 
-基于 Agno 框架的单智能体 RAG（检索增强生成）系统，支持知识库构建、向量检索和智能问答。
+基于 Agno 框架的多智能体 RAG（检索增强生成）系统，采用多智能体协作架构，支持知识库构建、向量检索和智能问答。
 
 ## 项目概述
 
-本项目是一个完整的 RAG 系统实现，采用 `src-layout` 项目结构，所有源代码位于 `src/agno_project/` 目录下。系统支持 Markdown 格式文档的知识库构建，使用多种切分方法，并将文档存储到向量数据库中进行语义检索。
+本项目是一个完整的多智能体 RAG 系统实现，采用 `src-layout` 项目结构，所有源代码位于 `src/agno_project/` 目录下。系统支持 Markdown 格式文档的知识库构建，使用多种切分方法，并将文档存储到向量数据库中进行语义检索。
+
+系统采用多智能体协作架构，通过 Planning、RAG、Debate、Judgment 和 Reply 五个智能体的协作，实现智能化的问答处理流程。
 
 **项目状态：✅ 已完成并可用**
 
 ## 功能特性
 
+- ✅ **多智能体架构**：Planning → RAG → Debate → Judgment → Reply 完整协作流程
+- ✅ **智能规划**：Planning 智能体自动判断处理路径（direct、rag_only、multi_agent_debate、reject）
+- ✅ **多立场讨论**：支持激进派、保守派、官方叙事三个立场的智能体讨论
+- ✅ **质量评估**：Judgment 智能体评估讨论质量，控制流程迭代
+- ✅ **结构化回答**：Reply 智能体整合结果，生成结构化的最终答案
 - ✅ **知识库构建**：支持 Markdown 格式文档导入，提供多种文档切分方法
 - ✅ **向量存储**：使用 Milvus 向量数据库存储文档嵌入向量
 - ✅ **元数据管理**：使用 MySQL 存储文档和切片的元数据信息
-- ✅ **RAG 检索**：基于语义相似度的文档检索
-- ✅ **智能问答**：集成自定义 LLM 模型进行问答生成
-- ✅ **会话管理**：支持多会话持久化，可查询会话历史记录
+- ✅ **RAG 检索**：基于语义相似度的文档检索（仅检索，不生成答案）
 - ✅ **多环境配置**：支持 dev、show、prod 三个环境的独立配置
 - ✅ **RESTful API**：提供完整的 FastAPI 接口，支持 Postman 测试
 - ✅ **Agno 集成**：基于 Agno Agent 框架，支持工具调用和会话管理
@@ -45,28 +50,47 @@ Agno_Agent/
 │       │   ├── main.py    # 主应用和路由定义
 │       │   └── run.py     # 运行入口
 │       ├── config.py      # 配置管理
-│       ├── database/      # 数据库客户端
-│       │   ├── mysql_client.py    # MySQL 客户端
-│       │   ├── milvus_client.py    # Milvus 向量数据库客户端
-│       │   └── base.py            # 数据库基类接口
 │       ├── knowledge_base/ # 知识库构建模块
 │       │   ├── chunkers.py    # 文档切分器（支持多种切分方法）
 │       │   ├── embedder.py    # 嵌入向量生成
-│       │   └── builder.py     # 知识库构建器
-│       ├── rag/           # RAG 检索和生成
-│       │   ├── retriever.py   # 检索器
-│       │   ├── llm_client.py  # LLM 客户端
-│       │   ├── custom_model.py  # 自定义模型类（Agno Model 实现）
-│       │   ├── tools.py       # RAG 工具（检索工具）
-│       │   └── agent.py       # RAG 智能体（基于 Agno Agent）
+│       │   ├── builder.py     # 知识库构建器
+│       │   └── utils.py       # 知识库工具函数
+│       ├── agents/        # 多智能体模块
+│       │   ├── planning/      # Planning 智能体（规划处理路径）
+│       │   ├── capability/    # RAG 智能体（仅检索，不生成答案）
+│       │   ├── debate/        # 讨论团队（多立场讨论）
+│       │   ├── judgment/      # Judgment 智能体（质量评估）
+│       │   ├── terminal/      # Reply 智能体（生成最终答案）
+│       │   ├── workflow_controller.py  # 工作流控制器
+│       │   └── registry.py    # 智能体注册表
+│       ├── infrastructure/ # 基础设施模块
+│       │   ├── database/      # 数据库客户端（MySQL、Milvus）
+│       │   ├── embeddings/    # 嵌入向量生成
+│       │   └── llm/          # LLM 客户端和自定义模型
+│       ├── protocols/     # 协议和规则定义
+│       │   ├── plan_schema.py      # 规划输出结构
+│       │   ├── judgment_rules.py   # 判断规则
+│       │   ├── debate_protocol.py # 讨论协议
+│       │   └── safety_policy.py   # 安全策略
+│       ├── tools/         # 工具模块
+│       │   ├── rag_retrieval_tool.py  # RAG 检索工具
+│       │   ├── rerank_tool.py         # 重排序工具
+│       │   ├── safety_check_tool.py   # 安全检查工具
+│       │   └── sql_query_tool.py     # SQL 查询工具
+│       ├── memory/        # 记忆管理模块
+│       │   ├── conversation_store.py  # 会话存储
+│       │   └── reasoning_trace.py     # 推理追踪
 │       ├── agentos/        # AgentOS 应用模块
 │       │   ├── __init__.py
 │       │   └── setup.py    # AgentOS 初始化模块（集成到主应用）
-│       └── utils/         # 工具函数（预留目录）
+│       └── utils/         # 工具函数
+├── postman/                          # Postman 测试文件
+│   ├── Agno_RAG_System.postman_collection.json  # Postman 接口测试集合
+│   └── POSTMAN_使用说明.md            # Postman 使用说明文档
 ├── pyproject.toml                    # 项目依赖配置
+├── requirements.txt                  # Python 依赖列表
+├── start.py                          # Windows 启动脚本
 ├── start.sh                          # Linux 启动脚本（可选）
-├── Agno_RAG_System.postman_collection.json  # Postman 接口测试集合
-├── POSTMAN_使用说明.md                # Postman 使用说明文档
 └── README.md                         # 项目文档
 ```
 
@@ -275,7 +299,7 @@ AgentOS 已集成到主 FastAPI 应用中，无需单独启动。AgentOS 的路�
 - **DELETE** `/api/v1/documents/{document_id}`
   - 响应：删除结果
 
-### RAG 查询
+### RAG 查询（多智能体架构）
 
 #### 查询问答
 
@@ -286,24 +310,69 @@ AgentOS 已集成到主 FastAPI 应用中，无需单独启动。AgentOS 的路�
       "question": "你的问题",
       "top_k": 5,
       "similarity_threshold": 0.7,
-      "session_id": "optional-session-id"
+      "session_id": "optional-session-id",
+      "user_id": "optional-user-id"
     }
     ```
-  - 响应：
+  - 响应（简单问题）：
     ```json
     {
       "question": "你的问题",
       "answer": "AI 生成的答案",
+      "sources": [],
+      "num_sources": 0,
+      "session_id": "session-id",
+      "processing_path": "direct",
+      "plan": {
+        "processing_path": "direct",
+        "complexity_level": "low",
+        "risk_level": "low",
+        "requires_retrieval": false
+      },
+      "debate_result": null,
+      "judgment_result": null
+    }
+    ```
+  - 响应（复杂问题，触发多智能体讨论）：
+    ```json
+    {
+      "question": "这个政策的影响是什么？",
+      "answer": "根据多立场讨论，以下是结构化分析：\n\n1. 事实共识：...\n2. 立场分歧：...\n3. 不确定性与未来变量：...",
       "sources": [
         {
-          "tool": "rag_retrieval",
-          "query": "你的问题"
+          "file_id": 1,
+          "file_name": "policy.md",
+          "content": "...",
+          "score": 0.85
         }
       ],
       "num_sources": 1,
-      "session_id": "session-id"
+      "session_id": "session-id",
+      "processing_path": "multi_agent_debate",
+      "plan": {
+        "processing_path": "multi_agent_debate",
+        "complexity_level": "high",
+        "risk_level": "medium",
+        "requires_retrieval": true
+      },
+      "debate_result": {
+        "question": "这个政策的影响是什么？",
+        "summary": "讨论摘要...",
+        "round": 2
+      },
+      "judgment_result": {
+        "action": "terminate",
+        "reasoning": "讨论已充分，各立场已表达核心观点",
+        "issues": [],
+        "improvements": []
+      }
     }
     ```
+  - **响应字段说明**：
+    - `processing_path`: 处理路径（`direct`、`rag_only`、`multi_agent_debate`、`reject`）
+    - `plan`: 规划结果（包含复杂度、风险等级、是否需要检索等信息）
+    - `debate_result`: 讨论结果（如果进行了讨论，包含讨论摘要和轮次）
+    - `judgment_result`: 判断结果（如果进行了讨论，包含判断动作、理由、问题、改进建议）
 
 ### 系统信息
 
@@ -316,20 +385,6 @@ AgentOS 已集成到主 FastAPI 应用中，无需单独启动。AgentOS 的路�
 
 - **GET** `/api/v1/stats`
   - 响应：系统统计信息（向量数据库统计、文档数量、环境信息等）
-
-### 会话管理
-
-#### 获取会话历史
-
-- **GET** `/api/v1/sessions/{session_id}/history`
-  - 响应：指定会话的历史记录
-    ```json
-    {
-      "session_id": "session-id",
-      "history": [...],
-      "message_count": 10
-    }
-    ```
 
 ## 文档切分方法
 
@@ -377,7 +432,7 @@ AgentOS 已集成到主 FastAPI 应用中，无需单独启动。AgentOS 的路�
 1. **导入 Postman 集合**
    - 打开 Postman 应用
    - 点击 **Import** 按钮
-   - 选择项目根目录下的 `Agno_RAG_System.postman_collection.json` 文件
+   - 选择项目根目录下的 `postman/Agno_RAG_System.postman_collection.json` 文件
    - 导入后即可看到所有接口，已按功能分组
 
 2. **配置环境变量**
@@ -386,10 +441,11 @@ AgentOS 已集成到主 FastAPI 应用中，无需单独启动。AgentOS 的路�
 
 3. **快速测试**
    - **上传文档**：在"知识库管理"分组中选择"上传文档"，选择 Markdown 文件并发送
-   - **查询问答**：在"RAG 查询"分组中选择"查询问答"，输入问题并发送
+   - **查询问答（简单问题）**：在"RAG 查询"分组中选择"查询问答"，输入简单问题，查看 `processing_path` 为 `direct` 或 `rag_only`
+   - **查询问答（复杂问题）**：输入复杂或有争议的问题，查看 `processing_path` 为 `multi_agent_debate`，并查看 `debate_result` 和 `judgment_result`
    - **查看文档列表**：在"知识库管理"分组中选择"列出所有文档"
 
-详细使用说明请参考 `POSTMAN_使用说明.md` 文件。
+详细使用说明请参考 `postman/POSTMAN_使用说明.md` 文件。
 
 ### 手动测试示例
 
@@ -417,12 +473,14 @@ AgentOS 已集成到主 FastAPI 应用中，无需单独启动。AgentOS 的路�
 
 ### Python 代码示例
 
-#### RAG 系统使用示例
+#### 多智能体 RAG 系统使用示例
 
 ```python
 import asyncio
 from agno_project.knowledge_base.builder import KnowledgeBaseBuilder
-from agno_project.agents.capability.rag_agent import RAGAgent
+from agno_project.agents.workflow_controller import WorkflowController
+from agno.db.mysql import MySQLDb
+from agno_project.config import get_config
 
 async def main():
     # 构建知识库
@@ -433,11 +491,48 @@ async def main():
     )
     print(f"文档已添加: {result}")
     
-    # RAG 查询
-    agent = RAGAgent()
-    response = await agent.query("你的问题")
-    print(f"答案: {response['answer']}")
-    print(f"来源: {response['sources']}")
+    # 创建数据库连接
+    config = get_config()
+    mysql_config = config.mysql
+    agent_db_config = config.agent_db
+    
+    db_url = (
+        f"mysql+pymysql://{mysql_config.user}:{mysql_config.password}"
+        f"@{mysql_config.host}:{mysql_config.port}/{mysql_config.database}"
+    )
+    if mysql_config.charset:
+        db_url += f"?charset={mysql_config.charset}"
+    
+    db_kwargs = {"db_url": db_url}
+    if agent_db_config.db_schema:
+        db_kwargs["db_schema"] = agent_db_config.db_schema
+    
+    db = MySQLDb(**db_kwargs)
+    
+    # 使用 WorkflowController 处理查询
+    workflow_controller = WorkflowController(db=db)
+    
+    # 简单问题
+    result = await workflow_controller.process(
+        question="你好",
+        session_id="session-123",
+        user_id="user-001"
+    )
+    print(f"处理路径: {result['processing_path']}")
+    print(f"答案: {result['answer']}")
+    
+    # 复杂问题（触发多智能体讨论）
+    result = await workflow_controller.process(
+        question="这个政策的影响是什么？",
+        session_id="session-123",
+        user_id="user-001"
+    )
+    print(f"处理路径: {result['processing_path']}")
+    print(f"答案: {result['answer']}")
+    if result.get('debate_result'):
+        print(f"讨论结果: {result['debate_result']}")
+    if result.get('judgment_result'):
+        print(f"判断结果: {result['judgment_result']}")
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -465,6 +560,45 @@ response = requests.post(
 print(response.json())
 ```
 
+## 多智能体架构说明
+
+### 处理流程
+
+1. **Planning 智能体**：分析问题，判断处理路径
+   - `direct`: 直接回答（简单问题）
+   - `rag_only`: 仅检索后回答（需要知识库支持）
+   - `multi_agent_debate`: 多立场讨论（复杂问题）
+   - `reject`: 拒绝处理（违反安全策略）
+
+2. **RAG 智能体**：从知识库检索相关文档片段
+   - 仅负责检索，不生成答案
+   - 返回文档片段列表供后续智能体使用
+
+3. **讨论团队**（可选）：多立场讨论
+   - **激进派 Agent**：从激进立场提出观点
+   - **保守派 Agent**：从保守立场提出观点
+   - **官方叙事 Agent**：从官方立场提出观点
+   - **Leader Agent**：协调讨论节奏
+
+4. **判断智能体**：评估讨论质量
+   - 判断讨论是否充分
+   - 决定是否继续、终止或重新检索
+   - 提供改进建议
+
+5. **Reply 智能体**：整合结果，生成最终答案
+   - 整合 RAG 检索结果
+   - 整合讨论结果（如果有）
+   - 生成结构化的最终答案
+   - 明确区分：事实共识、立场分歧、不确定性与未来变量
+
+### 智能体职责
+
+- **Planning 智能体**：系统入口，决定处理路径
+- **RAG 智能体**：仅检索，不生成答案
+- **讨论团队**：多立场讨论，产生不同观点
+- **判断智能体**：质量评估，流程控制
+- **Reply 智能体**：唯一负责生成最终答案的智能体
+
 ## 注意事项
 
 1. **API 密钥配置**：确保在配置文件中正确设置通义千问 API Key 和自定义 LLM API 地址
@@ -474,8 +608,10 @@ print(response.json())
 5. **环境变量**：启动前设置 `ENVIRONMENT` 环境变量以选择配置文件
 6. **会话持久化**：如果启用了 `agent_db.enabled`，Agno 会在 MySQL 中自动创建会话管理表
 7. **依赖安装**：首次运行前请确保安装所有依赖，建议使用虚拟环境
-8. **AgentOS 配置**：AgentOS 已集成到主应用中，会自动从 `config/dev.toml` 读取 MySQL 和 Milvus 配置，确保配置文件正确设置
+8. **AgentOS 配置**：AgentOS 已集成到主应用中，会自动从配置文件读取 MySQL 和 Milvus 配置，确保配置文件正确设置
 9. **端口冲突**：主应用使用 8000 端口，AgentOS 路由挂载在 `/agentos` 路径下，无需单独端口
+10. **多智能体处理时间**：复杂问题可能触发多立场讨论，响应时间可能较长，请耐心等待
+11. **处理路径**：系统会根据问题复杂度自动选择处理路径，简单问题可能直接回答，复杂问题会触发讨论
 
 ## 开发说明
 
@@ -487,15 +623,16 @@ print(response.json())
 
 ### 扩展数据库支持
 
-1. 实现 `VectorStoreInterface` 或 `DocumentStoreInterface`（位于 `database/base.py`）
+1. 实现 `VectorStoreInterface` 或 `DocumentStoreInterface`（位于 `infrastructure/database/base.py`）
 2. 在配置文件中添加新的数据库配置项
 3. 更新 `KnowledgeBaseBuilder` 以支持新数据库
 
-### 自定义切分方法
+### 添加新的智能体
 
-1. 在 `src/agno_project/knowledge_base/chunkers.py` 中创建新的切分器类
-2. 继承 `BaseChunker` 并实现 `chunk` 方法
-3. 在 `ChunkerFactory` 中注册新方法
+1. 在 `src/agno_project/agents/` 目录下创建新的智能体模块
+2. 实现智能体的核心逻辑
+3. 在 `WorkflowController` 中集成新智能体
+4. 更新工作流步骤以包含新智能体
 
 ## 故障排查
 
@@ -507,6 +644,8 @@ print(response.json())
 4. **LLM 调用失败**：检查自定义 LLM API 地址和密钥配置
 5. **会话管理错误**：如果启用了 `agent_db.enabled`，确保 MySQL 数据库连接正常，Agno 会自动创建必要的表
 6. **端口占用**：如果 8000 端口被占用，可以在配置文件中修改 `port` 配置
+7. **没有触发多智能体讨论**：多智能体讨论由 Planning 智能体根据问题复杂度自动决定，简单问题可能直接回答（`processing_path: direct`），复杂或有争议的问题更可能触发讨论（`processing_path: multi_agent_debate`）
+8. **响应中没有 debate_result**：这些字段只在 `processing_path` 为 `multi_agent_debate` 时出现，简单问题不会触发讨论流程
 
 ## 许可证
 

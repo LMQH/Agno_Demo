@@ -1,18 +1,15 @@
 """FastAPI 主应用程序。"""
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import os
-import tempfile
 import logging
-import asyncio
 from pathlib import Path
-from agno.agent import RunOutput
+from agno.db.mysql import MySQLDb
 
 from ..config import get_config
 from ..knowledge_base.builder import KnowledgeBaseBuilder
-from ..agents.capability.rag_agent import RAGAgent
+from ..agents.workflow_controller import WorkflowController
 from ..agentos import get_agent_os_app
 
 # 配置日志
@@ -26,7 +23,7 @@ logging.basicConfig(
 config = get_config()
 app = FastAPI(
     title=config.name,
-    description="RAG System based on Agno framework",
+    description="Multi-Agent RAG System based on Agno framework",
     version="0.1.0",
     debug=config.debug
 )
@@ -34,9 +31,39 @@ app = FastAPI(
 # 配置日志
 logger = logging.getLogger(__name__)
 
+# 初始化数据库连接（用于 WorkflowController）
+def create_db_connection() -> Optional[MySQLDb]:
+    """创建 MySQL 数据库连接。"""
+    try:
+        mysql_config = config.mysql
+        agent_db_config = config.agent_db
+        
+        # 构建 MySQL 连接字符串
+        db_url = (
+            f"mysql+pymysql://{mysql_config.user}:{mysql_config.password}"
+            f"@{mysql_config.host}:{mysql_config.port}/{mysql_config.database}"
+        )
+        if mysql_config.charset:
+            db_url += f"?charset={mysql_config.charset}"
+        
+        # 创建 MySQL 数据库连接
+        db_kwargs = {"db_url": db_url}
+        if agent_db_config.db_schema:
+            db_kwargs["db_schema"] = agent_db_config.db_schema
+        
+        db = MySQLDb(**db_kwargs)
+        logger.info(f"✓ MySQL 数据库连接成功: {mysql_config.host}:{mysql_config.port}/{mysql_config.database}")
+        return db
+    except Exception as e:
+        logger.error(f"MySQL 数据库连接失败: {e}", exc_info=True)
+        return None
+
+# 初始化数据库连接
+db = create_db_connection()
+
 # 初始化组件
 kb_builder = KnowledgeBaseBuilder()
-rag_agent = RAGAgent()
+workflow_controller = WorkflowController(db=db)
 
 # 集成 AgentOS
 try:
@@ -57,22 +84,18 @@ async def startup_event():
         logger.debug("会话 ID: session_start")
         logger.debug("用户 ID: lmqh")
         
-        # 触发一次简单的 Agent 调用来初始化数据库表
+        # 使用 WorkflowController 触发一次简单的查询来初始化数据库表
         # 这会让 Agno 自动创建必要的表（agno_memories, agno_runs 等）
-        # 使用 agent.print_response() 方法，必须提供 user_id 才能启用记忆功能
-        # 使用包含用户信息的对话来触发记忆写入，从而创建表
-
-        # result = await rag_agent.query(
-        #     question="你好，我是用户 lmqh，请记住我的名字。请用一句话简短回复（不超过30字）。",
-        #     session_id="session_start",
-        #     user_id="lmqh"  # 必须提供 user_id 才能启用记忆功能
-        rag_agent.agent.print_response(
-            "你好，我是用户 lmqh，请记住我的名字。请用一句话简短回复（不超过30字）。",
-            user_id="lmqh",  # 必须提供 user_id 才能启用记忆功能
-            session_id="session_start"
-        )
+        try:
+            await workflow_controller.process(
+                question="你好，我是用户 lmqh，请记住我的名字。请用一句话简短回复（不超过30字）。",
+                session_id="session_start",
+                user_id="lmqh"
+            )
+            logger.debug("Agno 数据库表初始化成功")
+        except Exception as e:
+            logger.debug(f"初始化查询执行失败（将在首次使用时自动创建表）: {e}")
         
-        logger.debug("Agno 数据库表初始化成功")
         logger.debug("=" * 60)
     except Exception as e:
         # 初始化失败不影响应用启动，只记录警告
@@ -91,12 +114,16 @@ class QueryRequest(BaseModel):
 
 
 class QueryResponse(BaseModel):
-    """查询响应模型。"""
+    """查询响应模型（多智能体架构）。"""
     question: str
     answer: str
     sources: List[dict]
     num_sources: int
     session_id: Optional[str] = None
+    processing_path: Optional[str] = None  # 处理路径：direct, rag_only, multi_agent_debate, reject
+    plan: Optional[Dict[str, Any]] = None  # 规划结果
+    debate_result: Optional[Dict[str, Any]] = None  # 讨论结果（如果有）
+    judgment_result: Optional[Dict[str, Any]] = None  # 判断结果（如果有）
 
 
 class DocumentResponse(BaseModel):
@@ -151,41 +178,41 @@ async def health():
 
 @app.post("/api/v1/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
-    """查询 RAG 系统。"""
+    """查询多智能体 RAG 系统。
+    
+    使用多智能体架构处理查询：
+    1. Planning 智能体判断处理路径
+    2. RAG 智能体检索相关文档（如果需要）
+    3. 讨论团队进行多立场讨论（如果需要）
+    4. 判断智能体评估讨论质量
+    5. Reply 智能体生成最终回答
+    """
     try:
-        # 使用 agent.run() 方法，必须提供 user_id 才能启用记忆功能
         # 如果没有提供 user_id，使用 session_id 或默认值
         user_id = request.user_id or request.session_id or "default_user"
         session_id = request.session_id
         
-        # 调用 agent.run() 方法（同步版本，在异步环境中使用 asyncio.to_thread）
-        # 参考官方示例：response: RunOutput = agent.run("你的问题")
-        # 必须传递 user_id 和 session_id 才能启用记忆功能
-        response: RunOutput = await asyncio.to_thread(
-            rag_agent.agent.run,
-            request.question,
-            user_id=user_id,  # 必须提供 user_id 才能启用记忆功能
-            session_id=session_id
+        # 使用 WorkflowController 处理查询
+        result = await workflow_controller.process(
+            question=request.question,
+            session_id=session_id,
+            user_id=user_id
         )
         
-        # 按照官方示例，直接使用 response.content 获取答案
-        answer = response.content
-        
-        # 使用统一的 sources 提取方法
-        sources = rag_agent._extract_sources_from_response(response)
-        
-        # 如果仍然没有 sources，记录警告
-        if not sources:
-            logger.warning(f"查询 '{request.question}' 未返回 sources（Agent 可能未调用检索工具）")
-        
-        return {
-            "question": request.question,
-            "answer": answer,
-            "sources": sources,
-            "num_sources": len(sources),
-            "session_id": session_id
-        }
+        # 构建响应（WorkflowController 已经返回了完整的结构）
+        return QueryResponse(
+            question=result.get("question", request.question),
+            answer=result.get("answer", ""),
+            sources=result.get("sources", []),
+            num_sources=result.get("num_sources", 0),
+            session_id=result.get("session_id", session_id),
+            processing_path=result.get("processing_path"),
+            plan=result.get("plan"),
+            debate_result=result.get("debate_result"),
+            judgment_result=result.get("judgment_result")
+        )
     except Exception as e:
+        logger.error(f"查询失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
 
 
@@ -346,47 +373,11 @@ async def get_stats():
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
 
 
-@app.get("/api/v1/sessions/{session_id}/history")
-async def get_session_history(session_id: str):
-    """获取会话历史记录。"""
-    try:
-        history = rag_agent.get_session_history(session_id=session_id)
-        return {
-            "session_id": session_id,
-            "history": history,
-            "message_count": len(history)
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取会话历史失败: {str(e)}")
-
-
-@app.get("/api/v1/memory/status")
-async def get_memory_status():
-    """获取记忆功能状态。"""
-    try:
-        status = rag_agent.verify_memory_enabled()
-        return status
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取记忆状态失败: {str(e)}")
-
-
-@app.post("/api/v1/memory/{user_id}/prune")
-async def prune_user_memory(user_id: str, keep_count: Optional[int] = None):
-    """清理指定用户的记忆（保留最近的 N 条）。
-    
-    Args:
-        user_id: 用户 ID
-        keep_count: 保留的记忆数量，如果为 None 则使用默认值（10）
-    """
-    try:
-        result = await rag_agent.prune_memories(user_id=user_id, keep_count=keep_count)
-        if result.get("status") == "error":
-            raise HTTPException(status_code=500, detail=result.get("message"))
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"清理记忆失败: {str(e)}")
+# 以下端点已移除，因为功能已由 WorkflowController 内部处理：
+# - /api/v1/sessions/{session_id}/history (会话历史由 Agno 框架自动管理)
+# - /api/v1/memory/status (记忆功能由 WorkflowController 中的各个 Agent 管理)
+# - /api/v1/memory/{user_id}/prune (记忆管理由 Agno 框架自动处理)
+# 如果需要这些功能，可以通过 WorkflowController 或直接访问数据库实现
 
 
 if __name__ == "__main__":
