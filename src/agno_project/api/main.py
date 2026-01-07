@@ -1,7 +1,9 @@
 """FastAPI 主应用程序。"""
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+from contextlib import asynccontextmanager
 import os
 import logging
 from pathlib import Path
@@ -10,7 +12,7 @@ from agno.db.mysql import MySQLDb
 from ..config import get_config
 from ..knowledge_base.builder import KnowledgeBaseBuilder
 from ..agents.workflow_controller import WorkflowController
-from ..agentos import get_agent_os_app
+from ..agentos import get_agent_os_app, create_agent_os
 from ..database.mysql_client import MySQLClient
 from sqlalchemy import text
 
@@ -21,17 +23,11 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-# 初始化 FastAPI 应用
-config = get_config()
-app = FastAPI(
-    title=config.name,
-    description="Multi-Agent RAG System based on Agno framework",
-    version="0.1.0",
-    debug=config.debug
-)
-
 # 配置日志
 logger = logging.getLogger(__name__)
+
+# 初始化配置和数据库连接（需要在 lifespan 之前）
+config = get_config()
 
 # 初始化数据库连接（用于 WorkflowController）
 def create_db_connection() -> Optional[MySQLDb]:
@@ -67,19 +63,11 @@ db = create_db_connection()
 kb_builder = KnowledgeBaseBuilder()
 workflow_controller = WorkflowController(db=db)
 
-# 集成 AgentOS
-try:
-    agent_os_app = get_agent_os_app()
-    # 挂载 AgentOS 的路由到 /agentos 路径
-    app.mount("/agentos", agent_os_app)
-    logger.info("✓ AgentOS 已集成到主应用，路由挂载在 /agentos")
-except Exception as e:
-    logger.warning(f"AgentOS 集成失败，将继续运行主应用: {e}")
-
-
-@app.on_event("startup")
-async def startup_event():
-    """应用启动时的初始化事件，用于初始化 Agno 数据库表。"""
+# 定义应用生命周期管理
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理，用于启动和关闭时的初始化。"""
+    # 启动时的初始化
     try:
         logger.debug("=" * 60)
         logger.debug("开始初始化 Agno 数据库表...")
@@ -101,11 +89,6 @@ async def startup_event():
                         delete_sql = f"DELETE FROM {sessions_table} WHERE session_id = :session_id"
                         result = session.execute(text(delete_sql), {"session_id": "session_start"})
                         session.commit()
-                        # deleted_count = result.rowcount
-                        # if deleted_count > 0:
-                        #     logger.debug(f"已删除 {deleted_count} 条旧的 session_start 记录（覆盖写入模式）")
-                        # else:
-                        #     logger.debug("未找到旧的 session_start 记录，将创建新记录")
                     except Exception as e:
                         # 表可能尚未创建，这是正常情况，继续执行
                         logger.debug(f"删除 session_start 记录时出错（表可能尚未创建，将在后续步骤中创建）: {e}")
@@ -130,6 +113,52 @@ async def startup_event():
         # 初始化失败不影响应用启动，只记录警告
         logger.warning(f"Agno 数据库表初始化失败（将在首次使用时自动创建）: {e}")
         logger.warning("应用将继续启动，表将在首次成功调用时自动创建")
+    
+    # 应用运行中...
+    yield
+    
+    # 关闭时的清理（如果需要）
+    logger.debug("应用正在关闭...")
+
+# 初始化 FastAPI 应用
+app = FastAPI(
+    title=config.name,
+    description="Multi-Agent RAG System based on Agno framework",
+    version="0.1.0",
+    debug=config.debug,
+    lifespan=lifespan  # 使用 lifespan context manager
+)
+
+# 配置 CORS 以支持 Control Plane 访问
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://os.agno.com",  # Control Plane 域名
+        "https://app.agno.com",  # 可能的备用域名
+        "http://localhost:3000",  # 本地开发（如果使用开源 AgentUI）
+        "http://localhost:7777",  # AgentOS 默认端口
+    ] + (["*"] if config.debug else []),  # 开发环境允许所有来源
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 集成 AgentOS（参考官方示例）
+# 参考：https://docs.agno.com/agent-os/introduction
+try:
+    logger.info("正在整合 AgentOS 到主应用...")
+    # 参考官方示例：将应用传递给 AgentOS
+    agent_os = create_agent_os(base_app=app)
+    # 获取合并后的应用
+    app = agent_os.get_app()
+    logger.info("✓ AgentOS 已整合到主应用")
+except Exception as e:
+    logger.error(f"AgentOS 集成失败: {e}", exc_info=True)
+    logger.warning("将继续运行主应用，但 AgentOS 功能不可用")
+
+
+# 注意：startup 事件已迁移到 lifespan context manager 中
+# 这样可以更好地与 AgentOS 的 lifespan 集成，避免关闭时的异常
 
 
 # 请求/响应模型
@@ -400,6 +429,63 @@ async def get_stats():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
+
+
+class AgentOSStatusResponse(BaseModel):
+    """AgentOS 状态响应模型（简化版）。"""
+    status: str
+    run_mode: str
+    os_id: Optional[str] = None
+    os_name: Optional[str] = None
+    os_tags: List[str] = []
+    endpoint_url: str
+    agents_count: int
+    agents: List[Dict[str, Any]]
+    security_configured: bool
+    control_plane_ready: bool
+    health_check_url: Optional[str] = None
+    diagnostics: Optional[Dict[str, Any]] = None
+
+
+@app.get("/api/v1/agentos/status", response_model=AgentOSStatusResponse)
+async def get_agentos_status():
+    """获取 AgentOS 状态信息（简化版）。"""
+    try:
+        # 获取 AgentOS 实例
+        agent_os = create_agent_os(base_app=app)
+        
+        # 获取 Agent 列表
+        agents = []
+        if agent_os:
+            agent_list = getattr(agent_os, 'agents', [])
+            for agent in agent_list:
+                agents.append({
+                    "name": getattr(agent, 'name', 'Unknown'),
+                    "id": getattr(agent, 'id', None),
+                    "description": getattr(agent, 'description', None),
+                })
+        
+        # 构建端点 URL
+        host = config.host if config.host != "0.0.0.0" else "localhost"
+        endpoint_url = f"http://{host}:{config.port}"
+        
+        return AgentOSStatusResponse(
+            status="running",
+            run_mode="mounted",
+            os_id=getattr(agent_os, 'id', 'agno-rag-system'),
+            os_name="Agno RAG System",
+            os_tags=[],
+            endpoint_url=endpoint_url,
+            agents_count=len(agents),
+            agents=agents,
+            security_configured=False,
+            control_plane_ready=True,  # 简化实现，无需密钥
+            health_check_url=f"{endpoint_url}/health",
+            diagnostics=None,
+        )
+    except Exception as e:
+        logger.error(f"获取 AgentOS 状态失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取 AgentOS 状态失败: {str(e)}")
 
 
 # 以下端点已移除，因为功能已由 WorkflowController 内部处理：

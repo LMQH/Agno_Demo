@@ -4,7 +4,7 @@ import platform
 import socket
 import logging
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 try:
     import tomllib
 except ImportError:
@@ -92,6 +92,9 @@ class AgentDbConfig(BaseSettings):
     memory_table: Optional[str] = None  # 自定义记忆表名，如果为 None 则使用 {db_schema}_memories
 
 
+# AgentOSConfig 已移除，简化实现，参考官方示例
+
+
 def get_local_ip() -> str:
     """
     跨平台获取本地 IP 地址：
@@ -170,6 +173,7 @@ class AppConfig(BaseSettings):
     llm: LLMConfig
     rag: RAGConfig
     agent_db: AgentDbConfig
+    # agentos 配置已移除，简化实现
 
     @classmethod
     def load_from_toml(cls, env: Literal["dev", "show", "prod"] = None) -> "AppConfig":
@@ -193,6 +197,7 @@ class AppConfig(BaseSettings):
         model_config = config_data.get("model", {})
         rag_config = config_data.get("rag", {})
         agent_db_config = config_data.get("agent_db", {})
+        # agentos 配置已移除，简化实现
         
         return cls(
             **app_config,
@@ -201,7 +206,8 @@ class AppConfig(BaseSettings):
             embedding=EmbeddingConfig(**model_config.get("embedding", {})),
             llm=LLMConfig(**model_config.get("llm", {})),
             rag=RAGConfig(**rag_config),
-            agent_db=AgentDbConfig(**agent_db_config)
+            agent_db=AgentDbConfig(**agent_db_config),
+            # agentos 已移除
         )
 
 

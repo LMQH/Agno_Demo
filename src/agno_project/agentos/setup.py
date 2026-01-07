@@ -1,5 +1,7 @@
 """
 AgentOS 初始化模块：创建和配置 AgentOS 实例
+
+参考官方示例：https://docs.agno.com/agent-os/introduction
 """
 from agno.agent import Agent
 from agno.db.mysql import MySQLDb
@@ -7,6 +9,7 @@ from agno.os import AgentOS
 from agno.knowledge.knowledge import Knowledge
 from agno.vectordb.milvus import Milvus, SearchType
 from agno.knowledge.embedder.openai import OpenAIEmbedder
+from fastapi import FastAPI
 import logging
 import os
 
@@ -15,25 +18,18 @@ from ..infrastructure.llm.custom_model import CustomModel
 
 logger = logging.getLogger(__name__)
 
-# 全局变量存储 AgentOS 实例
-_agent_os: AgentOS = None
-_agent_os_app = None
 
-
-def create_agent_os() -> AgentOS:
+def create_agent_os(base_app: FastAPI = None) -> AgentOS:
     """
-    创建并配置 AgentOS 实例。
+    创建 AgentOS 实例，参考官方示例。
+    
+    Args:
+        base_app: 可选的 FastAPI 应用实例。如果提供，AgentOS 会将路由和中间件添加到这个应用中。
     
     Returns:
         AgentOS 实例
     """
-    global _agent_os
-    
-    if _agent_os is not None:
-        logger.debug(f"AgentOS 已存在，直接返回现有实例")
-        return _agent_os
-    
-    logger.info("开始创建 AgentOS 实例...")
+    logger.info("正在初始化 AgentOS...")
     try:
         config = get_config()
         logger.debug("配置加载成功")
@@ -126,39 +122,38 @@ def create_agent_os() -> AgentOS:
         )
         
         # ========== 创建 AgentOS ==========
-        _agent_os = AgentOS(
-            id="my-first-os",
-            description="My first AgentOS with MySQL and Milvus support",
+        # 参考官方示例：https://docs.agno.com/agent-os/introduction
+        agent_os = AgentOS(
+            id="agno-rag-system",
+            description="Agno RAG System with MySQL and Milvus support",
             agents=[assistant],
+            base_app=base_app,  # 如果提供则整合到现有应用
         )
         
         logger.info("✓ AgentOS 初始化成功")
-        return _agent_os
+        logger.info(f"  OS ID: agno-rag-system")
+        logger.info(f"  Agents: 1 (Assistant)")
+        if base_app:
+            logger.info("  ✓ 已整合到 base_app")
+        
+        return agent_os
         
     except Exception as e:
         logger.error(f"AgentOS 初始化失败: {e}", exc_info=True)
         raise
 
 
-def get_agent_os_app():
+def get_agent_os_app(base_app: FastAPI = None) -> FastAPI:
     """
-    获取 AgentOS 的 FastAPI 应用实例。
+    获取 AgentOS FastAPI 应用，参考官方示例。
+    
+    Args:
+        base_app: 可选的 FastAPI 应用实例。如果提供，AgentOS 会整合到这个应用中。
     
     Returns:
         FastAPI 应用实例
     """
-    global _agent_os_app
-    
-    if _agent_os_app is not None:
-        return _agent_os_app
-    
-    if _agent_os is None:
-        create_agent_os()
-    
-    # 检查 _agent_os 是否成功创建
-    if _agent_os is None:
-        raise RuntimeError("AgentOS 初始化失败，无法创建 FastAPI 应用")
-    
-    _agent_os_app = _agent_os.get_app()
-    return _agent_os_app
+    agent_os = create_agent_os(base_app=base_app)
+    app = agent_os.get_app()
+    return app
 
