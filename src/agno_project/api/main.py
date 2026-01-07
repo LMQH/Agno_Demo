@@ -11,6 +11,8 @@ from ..config import get_config
 from ..knowledge_base.builder import KnowledgeBaseBuilder
 from ..agents.workflow_controller import WorkflowController
 from ..agentos import get_agent_os_app
+from ..database.mysql_client import MySQLClient
+from sqlalchemy import text
 
 # 配置日志
 logging.basicConfig(
@@ -83,6 +85,33 @@ async def startup_event():
         logger.debug("开始初始化 Agno 数据库表...")
         logger.debug("会话 ID: session_start")
         logger.debug("用户 ID: lmqh")
+        
+        # 在启动时删除旧的 session_start 记录，实现覆盖写入而不是追加
+        if db:
+            try:
+                mysql_client = MySQLClient()
+                # 获取表名，考虑 schema 前缀
+                agent_db_config = config.agent_db
+                schema_prefix = f"{agent_db_config.db_schema}." if agent_db_config.db_schema else ""
+                sessions_table = f"{schema_prefix}agno_sessions"
+                
+                # 删除已有的 session_start 记录（如果表已存在）
+                with mysql_client.get_session() as session:
+                    try:
+                        delete_sql = f"DELETE FROM {sessions_table} WHERE session_id = :session_id"
+                        result = session.execute(text(delete_sql), {"session_id": "session_start"})
+                        session.commit()
+                        # deleted_count = result.rowcount
+                        # if deleted_count > 0:
+                        #     logger.debug(f"已删除 {deleted_count} 条旧的 session_start 记录（覆盖写入模式）")
+                        # else:
+                        #     logger.debug("未找到旧的 session_start 记录，将创建新记录")
+                    except Exception as e:
+                        # 表可能尚未创建，这是正常情况，继续执行
+                        logger.debug(f"删除 session_start 记录时出错（表可能尚未创建，将在后续步骤中创建）: {e}")
+                        session.rollback()
+            except Exception as e:
+                logger.debug(f"初始化删除操作失败（继续执行）: {e}")
         
         # 使用 WorkflowController 触发一次简单的查询来初始化数据库表
         # 这会让 Agno 自动创建必要的表（agno_memories, agno_runs 等）

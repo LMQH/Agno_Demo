@@ -1,6 +1,6 @@
 """用于语义搜索的 RAG 检索器。"""
 from typing import List, Dict, Any, Optional
-from .milvus_client import MilvusClient
+from ...database.milvus_client import MilvusClient
 from ...knowledge_base.embedder import EmbeddingGenerator
 from ...config import get_config
 

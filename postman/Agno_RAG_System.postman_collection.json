@@ -2,8 +2,9 @@
 	"info": {
 		"_postman_id": "agno-rag-system-collection",
 		"name": "Agno Multi-Agent RAG System API",
-		"description": "基于 Agno 框架的多智能体 RAG 系统 API 接口集合\n\n## 架构说明\n\n本系统采用多智能体架构，查询流程如下：\n1. **Planning 智能体**：判断处理路径（direct、rag_only、multi_agent_debate、reject）\n2. **RAG 智能体**：检索相关文档片段（仅检索，不生成答案）\n3. **讨论团队**：多立场讨论（激进派、保守派、官方叙事）\n4. **判断智能体**：评估讨论质量，控制流程\n5. **Reply 智能体**：整合结果并生成最终答案\n\n## 使用说明\n\n1. 导入此集合到 Postman\n2. 设置环境变量 `base_url` 为你的服务器地址（默认：http://127.0.0.1:8000）\n3. 开始测试接口\n\n## 接口分组\n\n- **健康检查**：系统健康状态检查\n- **知识库管理**：文档的上传、查询、删除等操作\n- **RAG 查询**：多智能体智能问答接口（支持会话和用户记忆）\n- **系统信息**：系统统计和配置信息\n- **AgentOS**：基于 Agno AgentOS 的独立服务（挂载在 /agentos 路径）\n\n## 重要说明\n\n- 会话历史和记忆管理功能已由 WorkflowController 内部处理，不再提供独立端点\n- 查询响应包含多智能体架构的完整信息（processing_path、plan、debate_result、judgment_result）",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+		"description": "基于 Agno 框架的多智能体 RAG 系统 API 接口集合\n\n## 架构说明\n\n本系统采用多智能体架构，查询流程如下：\n1. **Planning 智能体**：判断处理路径（direct、rag_only、multi_agent_debate、reject）\n2. **RAG 智能体**：检索相关文档片段（仅检索，不生成答案）\n3. **讨论团队**：多立场讨论（激进派、保守派、官方叙事）\n4. **判断智能体**：评估讨论质量，控制流程\n5. **Reply 智能体**：整合结果并生成最终答案\n\n## 使用说明\n\n1. 导入此集合到 Postman\n2. 设置环境变量 `base_url` 为你的服务器地址（默认：http://127.0.0.1:8000）\n3. 开始测试接口\n\n## 接口分组\n\n- **健康检查**：系统健康状态检查\n- **知识库管理**：文档的上传、查询、删除等操作\n- **RAG 查询**：多智能体智能问答接口（支持会话和用户记忆）\n- **系统信息**：系统统计和配置信息\n- **AgentOS**：基于 Agno AgentOS 的独立服务（挂载在 /agentos 路径）\n\n## 重要说明\n\n- 会话历史和记忆管理功能已由 WorkflowController 内部处理，不再提供独立端点\n- 查询响应包含多智能体架构的完整信息（processing_path、plan、debate_result、judgment_result）\n- API 版本：v0.1.0\n- 文档路径参数使用 `file_id`，但响应中会映射为 `document_id`",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"version": "1.0.0"
 	},
 	"item": [
 		{
@@ -19,13 +20,41 @@
 							"host": [
 								"{{base_url}}"
 							],
-							"path": [
-								""
-							]
-						},
-						"description": "根端点健康检查，返回系统状态、环境和版本信息"
-					},
-					"response": []
+						"path": [
+							""
+						]
+					}
+				},
+				"description": "根端点健康检查，返回系统状态、环境和版本信息",
+				"response": [],
+				"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"响应包含 status 字段\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"});",
+									"",
+									"pm.test(\"响应包含 environment 字段\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('environment');",
+									"});",
+									"",
+									"pm.test(\"响应包含 version 字段\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('version');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "健康检查端点",
@@ -37,13 +66,41 @@
 							"host": [
 								"{{base_url}}"
 							],
-							"path": [
-								"health"
-							]
-						},
-						"description": "健康检查端点，返回系统状态、环境和版本信息"
-					},
-					"response": []
+						"path": [
+							"health"
+						]
+					}
+				},
+				"description": "健康检查端点，返回系统状态、环境和版本信息",
+				"response": [],
+				"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"响应包含 status 字段\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"});",
+									"",
+									"pm.test(\"响应包含 environment 字段\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('environment');",
+									"});",
+									"",
+									"pm.test(\"响应包含 version 字段\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('version');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
 			],
 			"description": "系统健康状态检查接口"
@@ -84,10 +141,40 @@
 								"documents",
 								"upload"
 							]
-						},
-						"description": "上传 Markdown 文档到知识库，系统会自动切分并生成向量嵌入"
+						}
 					},
-					"response": []
+					"description": "上传 Markdown 文档到知识库，系统会自动切分并生成向量嵌入\n\n**注意事项：**\n- 只支持 Markdown 格式文件（.md 或 .markdown）\n- 文件会自动切分并生成向量嵌入\n- 返回的 document_id 可用于后续查询和删除操作",
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"响应包含 document_id 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('document_id');",
+									"        ",
+									"        // 保存 document_id 到集合变量",
+									"        if (jsonData.document_id) {",
+									"            pm.collectionVariables.set('document_id', jsonData.document_id.toString());",
+									"        }",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 status 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('status');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "添加文档（文件路径）",
@@ -119,10 +206,30 @@
 								"documents",
 								"add"
 							]
-						},
-						"description": "通过文件路径添加文档到知识库（适用于服务器本地文件）"
+						}
 					},
-					"response": []
+					"description": "通过文件路径添加文档到知识库（适用于服务器本地文件）\n\n**请求参数：**\n- `file_path`: 服务器本地文件路径（必填）\n- `chunk_method`: 文档切分方法，可选值：recursive、markdown、semantic（默认：markdown）",
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"响应包含 document_id 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('document_id');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "列出所有文档",
@@ -139,10 +246,29 @@
 								"v1",
 								"documents"
 							]
-						},
-						"description": "获取知识库中所有文档的列表"
+						}
 					},
-					"response": []
+					"description": "获取知识库中所有文档的列表\n\n**响应字段：**\n- `id`: 文档 ID\n- `file_name`: 文件名\n- `updated_at`: 更新时间",
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"响应是数组\", function () {",
+									"    pm.expect(pm.response).to.be.json;",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "获取文档详情",
@@ -160,10 +286,35 @@
 								"documents",
 								"{{document_id}}"
 							]
-						},
-						"description": "根据文档 ID 获取文档的详细信息"
+						}
 					},
-					"response": []
+					"description": "根据文档 ID 获取文档的详细信息\n\n**路径参数：**\n- `document_id`: 文档 ID（使用集合变量 {{document_id}}）",
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200 或 404\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"响应包含 id 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('id');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 file_name 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('file_name');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "删除文档",
@@ -181,10 +332,35 @@
 								"documents",
 								"{{document_id}}"
 							]
-						},
-						"description": "从知识库中删除指定文档及其所有切片"
+						}
 					},
-					"response": []
+					"description": "从知识库中删除指定文档及其所有切片\n\n**路径参数：**\n- `document_id`: 文档 ID（使用集合变量 {{document_id}}）\n\n**警告：**删除操作不可逆，请谨慎操作",
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200 或 404\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"响应包含 document_id 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('document_id');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 status 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('status');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
 			],
 			"description": "知识库文档管理接口，包括上传、查询、删除等操作"
@@ -221,10 +397,49 @@
 								"v1",
 								"query"
 							]
-						},
-						"description": "向多智能体 RAG 系统提问，系统会通过以下流程处理：\n1. Planning 智能体判断处理路径\n2. RAG 智能体检索相关文档（如果需要）\n3. 讨论团队进行多立场讨论（如果需要）\n4. 判断智能体评估讨论质量\n5. Reply 智能体生成最终答案\n\n**请求参数说明：**\n- `question`: 用户问题（必填）\n- `top_k`: 检索的文档片段数量（可选，默认使用配置值）\n- `similarity_threshold`: 相似度阈值（可选，默认使用配置值）\n- `session_id`: 会话 ID（可选，用于会话持久化）\n- `user_id`: 用户 ID（可选，用于记忆功能，如果未提供则使用 session_id 或默认值）\n\n**响应字段说明：**\n- `question`: 原始问题\n- `answer`: 最终答案（由 Reply 智能体生成）\n- `sources`: 检索到的文档片段列表\n- `num_sources`: 文档片段数量\n- `session_id`: 会话 ID\n- `processing_path`: 处理路径（direct、rag_only、multi_agent_debate、reject）\n- `plan`: 规划结果（包含复杂度、风险等级、是否需要检索等信息）\n- `debate_result`: 讨论结果（如果进行了讨论，包含讨论摘要和轮次）\n- `judgment_result`: 判断结果（如果进行了讨论，包含判断动作、理由、问题、改进建议）"
+						}
 					},
-					"response": []
+					"description": "向多智能体 RAG 系统提问，系统会通过以下流程处理：\n1. Planning 智能体判断处理路径\n2. RAG 智能体检索相关文档（如果需要）\n3. 讨论团队进行多立场讨论（如果需要）\n4. 判断智能体评估讨论质量\n5. Reply 智能体生成最终答案\n\n**请求参数说明：**\n- `question`: 用户问题（必填）\n- `top_k`: 检索的文档片段数量（可选，默认使用配置值）\n- `similarity_threshold`: 相似度阈值（可选，默认使用配置值）\n- `session_id`: 会话 ID（可选，用于会话持久化）\n- `user_id`: 用户 ID（可选，用于记忆功能，如果未提供则使用 session_id 或默认值）\n\n**响应字段说明：**\n- `question`: 原始问题\n- `answer`: 最终答案（由 Reply 智能体生成）\n- `sources`: 检索到的文档片段列表\n- `num_sources`: 文档片段数量\n- `session_id`: 会话 ID\n- `processing_path`: 处理路径（direct、rag_only、multi_agent_debate、reject）\n- `plan`: 规划结果（包含复杂度、风险等级、是否需要检索等信息）\n- `debate_result`: 讨论结果（如果进行了讨论，包含讨论摘要和轮次）\n- `judgment_result`: 判断结果（如果进行了讨论，包含判断动作、理由、问题、改进建议）",
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    pm.test(\"响应包含 question 字段\", function () {",
+									"        pm.expect(jsonData).to.have.property('question');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 answer 字段\", function () {",
+									"        pm.expect(jsonData).to.have.property('answer');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 sources 字段\", function () {",
+									"        pm.expect(jsonData).to.have.property('sources');",
+									"        pm.expect(jsonData.sources).to.be.an('array');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 processing_path 字段\", function () {",
+									"        pm.expect(jsonData).to.have.property('processing_path');",
+									"    });",
+									"    ",
+									"    // 保存 session_id 到集合变量（如果存在）",
+									"    if (jsonData.session_id) {",
+									"        pm.collectionVariables.set('session_id', jsonData.session_id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "查询问答（带会话和用户）",
@@ -255,10 +470,39 @@
 								"v1",
 								"query"
 							]
-						},
-						"description": "带会话 ID 和用户 ID 的查询，可以保持对话上下文和用户记忆"
+						}
 					},
-					"response": []
+					"description": "带会话 ID 和用户 ID 的查询，可以保持对话上下文和用户记忆\n\n**使用场景：**\n- 需要保持对话上下文的连续对话\n- 需要利用用户记忆功能的个性化回答\n- 多轮对话场景\n\n**注意：**此请求使用集合变量 {{session_id}} 和 {{user_id}}，确保在使用前已设置这些变量",
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    pm.test(\"响应包含 question 字段\", function () {",
+									"        pm.expect(jsonData).to.have.property('question');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 answer 字段\", function () {",
+									"        pm.expect(jsonData).to.have.property('answer');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 session_id 字段\", function () {",
+									"        pm.expect(jsonData).to.have.property('session_id');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
 			],
 			"description": "多智能体 RAG 智能问答接口，支持会话持久化和用户记忆功能。系统会根据问题复杂度自动选择处理路径，可能包括多立场讨论。"
@@ -281,10 +525,36 @@
 								"v1",
 								"chunkers"
 							]
-						},
-						"description": "获取系统支持的所有文档切分方法"
+						}
 					},
-					"response": []
+					"description": "获取系统支持的所有文档切分方法\n\n**响应字段：**\n- `methods`: 支持的切分方法列表\n- `default`: 默认切分方法",
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"响应包含 methods 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('methods');",
+									"        pm.expect(jsonData.methods).to.be.an('array');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 default 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('default');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "获取系统统计",
@@ -301,10 +571,40 @@
 								"v1",
 								"stats"
 							]
-						},
-						"description": "获取系统统计信息，包括向量数据库统计、文档数量、环境信息、AgentDB 状态等"
+						}
 					},
-					"response": []
+					"description": "获取系统统计信息，包括向量数据库统计、文档数量、环境信息、AgentDB 状态等\n\n**响应字段：**\n- `vector_db`: 向量数据库统计信息\n- `documents_count`: 文档数量\n- `environment`: 环境信息\n- `agent_db_enabled`: AgentDB 是否启用",
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"状态码为 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test(\"响应包含 vector_db 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('vector_db');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 documents_count 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('documents_count');",
+									"    });",
+									"    ",
+									"    pm.test(\"响应包含 environment 字段\", function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('environment');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				}
 			],
 			"description": "系统信息和配置查询接口"
@@ -325,9 +625,9 @@
 							"path": [
 								"agentos"
 							]
-						},
-						"description": "AgentOS 是基于 Agno AgentOS 的独立服务，挂载在 /agentos 路径下。\n\nAgentOS 提供了完整的 Agent 管理功能，包括：\n- Agent 的创建和管理\n- 会话和记忆管理\n- 知识库集成（Milvus）\n- MySQL 数据库持久化\n\n**注意**：AgentOS 服务需要正确配置 MySQL 和 Milvus 才能正常工作。如果初始化失败，主应用仍会继续运行，但 AgentOS 路由将不可用。\n\n访问 AgentOS 的 API 文档：\n- Swagger UI: {{base_url}}/agentos/docs\n- ReDoc: {{base_url}}/agentos/redoc"
+						}
 					},
+					"description": "AgentOS 是基于 Agno AgentOS 的独立服务，挂载在 /agentos 路径下。\n\nAgentOS 提供了完整的 Agent 管理功能，包括：\n- Agent 的创建和管理\n- 会话和记忆管理\n- 知识库集成（Milvus）\n- MySQL 数据库持久化\n\n**注意**：AgentOS 服务需要正确配置 MySQL 和 Milvus 才能正常工作。如果初始化失败，主应用仍会继续运行，但 AgentOS 路由将不可用。\n\n访问 AgentOS 的 API 文档：\n- Swagger UI: {{base_url}}/agentos/docs\n- ReDoc: {{base_url}}/agentos/redoc",
 					"response": []
 				}
 			],

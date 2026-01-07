@@ -49,9 +49,74 @@ class WorkflowController:
         self.debate_team = DebateTeam(db=db, retriever=self.retriever)
         
         # 创建 Workflow（使用 lambda 绑定实例方法）
+        # 根据 Agno Workflow 源码，steps 函数的参数传递机制：
+        # 1. 如果函数签名中有 execution_input 参数，框架会传递 WorkflowExecutionInput 对象
+        # 2. 如果函数签名中有 session_state 参数，框架会传递 self.session_state
+        # 3. workflow.arun() 的自定义参数（如 query）会通过 **kwargs 传递
+        # 4. session_id 和 user_id 是标准参数，不会在 kwargs 中，需要通过 execution_input.additional_data 获取
+        async def workflow_steps_wrapper(
+            session_state: Optional[Dict[str, Any]] = None,
+            execution_input: Optional[Any] = None,
+            **kwargs
+        ):
+            # 确保 session_state 不为 None
+            if session_state is None:
+                session_state = {}
+            
+            # 从 kwargs 中提取自定义参数（workflow.arun() 的自定义参数会通过 kwargs 传递）
+            query = kwargs.pop("query", None)
+            
+            # 从 execution_input 获取参数（这是标准方式）
+            session_id = None
+            user_id = None
+            if execution_input:
+                # 从 execution_input.input 获取 query
+                if query is None and hasattr(execution_input, "input"):
+                    input_data = execution_input.input
+                    if isinstance(input_data, str):
+                        query = input_data
+                    elif isinstance(input_data, dict):
+                        query = input_data.get("query") or input_data.get("question")
+                
+                # 从 execution_input.additional_data 获取 session_id 和 user_id
+                if hasattr(execution_input, "additional_data") and execution_input.additional_data:
+                    session_id = execution_input.additional_data.get("session_id")
+                    user_id = execution_input.additional_data.get("user_id")
+            
+            # 如果 query 不存在，尝试从 session_state 获取
+            if query is None:
+                query = session_state.get("query")
+            
+            # 如果 query 仍然不存在，尝试从 session_state 的 input 字段获取
+            if query is None and "input" in session_state:
+                input_data = session_state["input"]
+                if isinstance(input_data, dict):
+                    query = input_data.get("query") or input_data.get("question")
+                elif isinstance(input_data, str):
+                    query = input_data
+            
+            # 如果 session_id 和 user_id 不存在，尝试从 session_state 获取
+            if session_id is None:
+                session_id = session_state.get("session_id")
+            if user_id is None:
+                user_id = session_state.get("user_id")
+            
+            # 如果仍然没有 query，抛出错误
+            if query is None:
+                raise ValueError("query 参数未提供，无法执行工作流。请确保 workflow.arun() 调用时传递了 input 参数。")
+            
+            # 调用 _workflow_steps，注意已经从 kwargs 中移除了 query
+            return await self._workflow_steps(
+                session_state=session_state,
+                query=query,
+                session_id=session_id,
+                user_id=user_id,
+                **kwargs  # 剩余的 kwargs（不包含 query）
+            )
+        
         self.workflow = Workflow(
             name="Multi-Agent Workflow",
-            steps=lambda session_state, **kwargs: self._workflow_steps(session_state, **kwargs),
+            steps=workflow_steps_wrapper,
             db=db,
         )
         
@@ -62,7 +127,8 @@ class WorkflowController:
         session_state: Dict[str, Any],
         query: str,
         session_id: Optional[str] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        **kwargs  # 接受额外参数（如 websocket），避免函数签名检查失败
     ) -> Dict[str, Any]:
         """工作流步骤定义。
         
@@ -220,10 +286,13 @@ class WorkflowController:
             处理结果字典
         """
         # 使用 Workflow 执行
+        # 根据 Agno 文档，使用 input 参数传递主要数据，additional_data 传递额外数据
+        # session_id 和 user_id 是标准参数，用于会话管理
         result = await self.workflow.arun(
-            query=question,
-            session_id=session_id,
-            user_id=user_id
+            input={"query": question, "question": question},  # 使用标准的 input 参数
+            additional_data={"session_id": session_id, "user_id": user_id},  # 额外数据
+            session_id=session_id,  # 标准参数，用于会话管理
+            user_id=user_id  # 标准参数，用于用户标识
         )
         
         # 从 Workflow 结果中提取内容

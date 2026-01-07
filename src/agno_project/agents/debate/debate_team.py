@@ -1,16 +1,15 @@
 """讨论团队：使用 Team 进行多智能体讨论。"""
 from typing import Optional, Dict, Any, List
 from agno.team.team import Team
-from agno.agent import Agent
 from agno.db.mysql import MySQLDb
 
 from ...config import get_config
 from ...infrastructure.llm.custom_model import CustomModel
-from ...tools.rag_retrieval_tool import RAGRetrievalTool
 from ...infrastructure.database.retriever import RAGRetriever
 from .conservative_agent import ConservativeAgent
 from .radical_agent import RadicalAgent
 from .official_agent import OfficialAgent
+from .leader_agent import LeaderAgent
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,6 +21,11 @@ class DebateTeam:
     团队结构：
     - Leader: 负责协调队员和控制讨论节奏
     - 队员: 激进、保守、官方三个立场 Agent
+    
+    关键配置：
+    - delegate_to_all_members=True: 确保所有成员都参与讨论，保留每个agent的原始意见
+      而不是完全概括改写成一个结果。这对于多立场辩论场景非常重要。
+    - show_members_responses=True: 显示每个成员的响应，便于调试和追踪各立场的观点
     """
     
     def __init__(
@@ -48,29 +52,13 @@ class DebateTeam:
         self.official_agent = OfficialAgent(db=db, retriever=retriever)
         
         # 创建 Leader Agent（负责协调）
-        leader_agent = Agent(
-            name="Debate Leader",
-            model=custom_model,
-            system_message="""你是讨论团队的 Leader，负责协调队员和控制讨论节奏。
-
-你的职责：
-1. 协调队员（激进派、保守派、官方叙事）进行讨论
-2. 控制讨论节奏，确保每个立场都有机会表达观点
-3. 引导队员针对问题进行深入讨论
-4. 整合讨论结果，形成阶段性讨论总结
-
-重要约束：
-- 不参与观点生成，只负责协调
-- 确保讨论有序进行
-- 及时总结讨论要点
-- 控制讨论时间，避免无意义的重复""",
-        )
+        self.leader_agent = LeaderAgent(db=db)
         
         # 创建 Team
         self.team = Team(
             name="Debate Team",
             members=[
-                leader_agent,
+                self.leader_agent.agent,
                 self.conservative_agent.agent,
                 self.radical_agent.agent,
                 self.official_agent.agent
@@ -83,6 +71,7 @@ class DebateTeam:
                 "最终形成整合的阶段性讨论结果，明确各立场的核心观点和分歧点"
             ],
             show_members_responses=True,  # 显示成员响应，便于调试
+            delegate_to_all_members=True,  # 确保所有成员都参与讨论，保留每个agent的意见而不是完全概括
             db=db,
         )
         
